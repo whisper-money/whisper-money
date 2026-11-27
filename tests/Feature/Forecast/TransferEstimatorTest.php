@@ -175,6 +175,44 @@ it('counts a transfer to a loan the forecast leaves out as money leaving, once',
         ->and($all[0])->toMatchArray(['direction' => 'out', 'counterpartyName' => 'Checking', 'name' => 'Car loan', 'amounts' => ['2026-11' => -40000, '2026-12' => -40000]]);
 });
 
+it('counts paying off a card the forecast leaves out as money leaving checking, and leaves the card\'s own spending out', function () {
+    $checking = Account::factory()->create(['type' => AccountType::Checking, 'name' => 'Checking', 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $card = Account::factory()->create(['type' => AccountType::CreditCard, 'name' => 'Visa', 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    AccountBalance::factory()->create(['account_id' => $checking->id, 'balance_date' => '2026-11-09', 'balance' => 500000]);
+    $groceries = forecastExpenseCategory($this->user, name: 'Groceries');
+    foreach (['2026-08', '2026-09', '2026-10', '2026-11'] as $month) {
+        forecastCharge($checking, "{$month}-03", -60000, 'LIQUIDACION TARJETA');
+        forecastCharge($card, "{$month}-06", 60000, 'PAGO TARJETA');
+        forecastCharge($card, "{$month}-08", -60000, 'MERCADONA', $groceries);
+    }
+
+    $plan = transferPlan($this->user);
+    $projection = app(ForecastProjector::class)->project($plan->input);
+
+    expect(collect($plan->input->accounts)->pluck('id')->all())->toBe([$checking->id])
+        ->and(transferEstimates($plan)[$checking->id.'|'.$card->id.'|2026-12'])->amount->toBe(60000)->date->toBe('2026-12-03')
+        ->and($plan->categoryEstimates)->toBeEmpty()
+        ->and(array_column($projection['accounts'][0]['months'], 'close'))->toBe([500000, 440000, 380000, 320000]);
+});
+
+it('keeps paying off a card whose payment never pairs as an expense of checking', function () {
+    $checking = Account::factory()->create(['type' => AccountType::Checking, 'name' => 'Checking', 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $card = Account::factory()->create(['type' => AccountType::CreditCard, 'name' => 'Visa', 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    AccountBalance::factory()->create(['account_id' => $checking->id, 'balance_date' => '2026-11-09', 'balance' => 500000]);
+    $groceries = forecastExpenseCategory($this->user, name: 'Groceries');
+    foreach (['2026-08', '2026-09', '2026-10', '2026-11'] as $month) {
+        forecastCharge($checking, "{$month}-03", -60000, 'LIQUIDACION TARJETA');
+        forecastCharge($card, "{$month}-08", -60000, 'MERCADONA', $groceries);
+    }
+
+    $plan = transferPlan($this->user);
+
+    expect(collect($plan->input->accounts)->pluck('id')->all())->toBe([$checking->id])
+        ->and($plan->transferEstimates)->toBeEmpty()
+        ->and(collect($plan->categoryEstimates)->where('accountId', $card->id))->toBeEmpty()
+        ->and(collect($plan->categoryEstimates)->where('accountId', $checking->id)->where('month', '2026-12')->sum('amount'))->toBe(60000);
+});
+
 it('nets what comes back against what goes, and goes the way the median says', function () {
     $checking = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     $savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);

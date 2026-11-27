@@ -201,6 +201,7 @@ describe('the account shown', function () {
     it('is by default the main checking account when none has a problem', function () {
         $this->insurance->delete();
         $card = forecastPageAccount($this->user, 'A card', AccountType::CreditCard, 0);
+        ForecastAccountSetting::factory()->create(['account_id' => $card->id, 'included' => true]);
 
         $this->actingAs($this->user)->get(route('forecast.index'))
             ->assertInertia(fn (AssertableInertia $page) => $page
@@ -210,6 +211,7 @@ describe('the account shown', function () {
 
     it('never warns about a credit card living below zero', function () {
         $card = forecastPageAccount($this->user, 'A card', AccountType::CreditCard, -45000);
+        ForecastAccountSetting::factory()->create(['account_id' => $card->id, 'included' => true]);
 
         $this->actingAs($this->user)->get(route('forecast.index', ['account' => $card->id]))
             ->assertInertia(fn (AssertableInertia $page) => $page
