@@ -102,6 +102,6 @@ class ForecastDashboardAlert
             ->whereNull('resolved_at')
             ->whereBetween('month', [$firstMonth->toDateString(), $lastMonth->toDateString()])
             ->where(fn (Builder $query) => $query->whereNull('snoozed_until')->orWhere('snoozed_until', '<=', $today->toDateString()))
-            ->whereHas('account', fn (Builder $query) => $query->notArchived());
+            ->whereHas('account', fn (Builder $query) => $query->whereNull('archived_at'));
     }
 }
