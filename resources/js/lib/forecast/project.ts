@@ -9,6 +9,7 @@ import {
 import type {
     ForecastOccurrence,
     MonthlyEstimate,
+    MonthlyEstimateKind,
     ProjectedMonth,
     Projection,
     ProjectionAccount,
@@ -86,8 +87,8 @@ class MonthAccumulator {
         this.estimatedIncome += other.estimatedIncome;
     }
 
-    addEstimate(amount: number, isIncome: boolean): void {
-        if (isIncome) {
+    addEstimate(kind: MonthlyEstimateKind, amount: number): void {
+        if (kind === 'income') {
             this.estimatedIncome += amount;
         } else {
             this.estimated += amount;
@@ -284,14 +285,17 @@ function estimatedByDay(
 
     for (const estimate of estimates) {
         const amount = Math.max(estimate.amount, 0);
-        const isIncome = estimate.kind === 'income';
-        accumulator.addEstimate(amount, isIncome);
+        const kind = estimate.kind ?? 'expense';
+        accumulator.addEstimate(kind, amount);
 
         for (const [day, share] of spread(
             amount,
             estimateWeights(estimate, month),
         )) {
-            byDay.set(day, (byDay.get(day) ?? 0) + (isIncome ? share : -share));
+            byDay.set(
+                day,
+                (byDay.get(day) ?? 0) + (kind === 'income' ? share : -share),
+            );
         }
     }
 

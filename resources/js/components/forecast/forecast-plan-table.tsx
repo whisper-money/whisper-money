@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/card';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
+import { isAdjustableEstimate } from '@/lib/forecast/edits';
 import {
     isShort,
     monthColumnLabel,
@@ -408,7 +409,9 @@ function editTarget(
                 ? { kind: 'line', line: row.line, month: column.month }
                 : null;
         case 'estimate':
-            return { kind: 'estimate', group: row.group, month: column.month };
+            return isAdjustableEstimate(row.group)
+                ? { kind: 'estimate', group: row.group, month: column.month }
+                : null;
         case 'suggestion':
             return row.suggestion.month === column.month
                 ? suggestedTransfer(row.suggestion, forecast.account.id)

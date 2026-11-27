@@ -1,5 +1,6 @@
 import { type ForecastEditTarget } from '@/components/forecast/forecast-editor';
 import { accountEstimateGroup } from '@/lib/forecast/all-accounts';
+import { isAdjustableEstimate } from '@/lib/forecast/edits';
 import { dayOf } from '@/lib/forecast/format';
 import { groupId, groupName } from '@/lib/forecast/plan-rows';
 import {
@@ -172,14 +173,16 @@ function estimateEntry(
             approximate: true,
             date: null,
             status: null,
-            target: {
-                kind: 'estimate',
-                group: source.group,
-                month: column.month,
-                ...(source.accountId === undefined
-                    ? {}
-                    : { accountId: source.accountId }),
-            },
+            target: isAdjustableEstimate(source.group)
+                ? {
+                      kind: 'estimate',
+                      group: source.group,
+                      month: column.month,
+                      ...(source.accountId === undefined
+                          ? {}
+                          : { accountId: source.accountId }),
+                  }
+                : null,
         },
     ];
 }

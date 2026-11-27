@@ -32,6 +32,10 @@ export interface ForecastRestOfMonthData {
     /** The lines not paid yet, soonest first. */
     lines: { name: string; date: string; amount: number }[];
     /** What is left of each parent category's estimate, signed (income positive); a null name is "Other income" or "Other spending". */
-    estimates: { name: string | null; amount: number }[];
+    estimates: {
+        name: string | null;
+        kind: 'income' | 'expense';
+        amount: number;
+    }[];
     endBalance: number;
 }

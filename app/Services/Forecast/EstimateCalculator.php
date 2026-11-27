@@ -103,7 +103,7 @@ class EstimateCalculator
 
     private static function kindOf(string $bucket): ForecastEstimateKind
     {
-        return ForecastEstimateKind::from(strstr($bucket, ':', true) ?: ForecastEstimateKind::Expense->value);
+        return ForecastEstimateKind::from((string) strstr($bucket, ':', true));
     }
 
     private static function parentOf(string $bucket): string

@@ -2,6 +2,8 @@
 
 namespace App\Services\Forecast;
 
+use App\Enums\ForecastEstimateKind;
+
 /**
  * Builds one projected month of an account, or of all of them, day by day;
  * toArray() is what ForecastProjector returns for it.
@@ -96,9 +98,9 @@ final class MonthAccumulator
         $this->estimatedIncome += $other->estimatedIncome;
     }
 
-    public function addEstimate(int $amount, bool $isIncome): void
+    public function addEstimate(ForecastEstimateKind $kind, int $amount): void
     {
-        if ($isIncome) {
+        if ($kind === ForecastEstimateKind::Income) {
             $this->estimatedIncome += $amount;
         } else {
             $this->estimated += $amount;

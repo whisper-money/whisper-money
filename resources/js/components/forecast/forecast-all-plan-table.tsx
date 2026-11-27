@@ -29,6 +29,7 @@ import {
     shortAccountCount,
     type AllPlanRow,
 } from '@/lib/forecast/all-accounts';
+import { isAdjustableEstimate } from '@/lib/forecast/edits';
 import { balanceTone, isShort, monthLongName } from '@/lib/forecast/format';
 import { groupName } from '@/lib/forecast/plan-rows';
 import { cn } from '@/lib/utils';
@@ -446,7 +447,7 @@ function editTarget(
             : null;
     }
 
-    if (row.type === 'estimate') {
+    if (row.type === 'estimate' && isAdjustableEstimate(row.group)) {
         return {
             kind: 'estimate',
             group: accountEstimateGroup(row.group, row.estimate),

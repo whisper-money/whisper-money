@@ -18,8 +18,8 @@ function rest(
         currencyCode: 'EUR',
         lines: [{ name: 'Salary', date: '2026-11-28', amount: 245000 }],
         estimates: [
-            { name: 'Groceries', amount: -800 },
-            { name: 'Leisure', amount: -500 },
+            { name: 'Groceries', kind: 'expense', amount: -800 },
+            { name: 'Leisure', kind: 'expense', amount: -500 },
         ],
         endBalance: 2342000,
         ...overrides,
@@ -92,9 +92,9 @@ describe('ForecastRestOfMonthCard', () => {
             rest({
                 lines: [],
                 estimates: [
-                    { name: null, amount: -3000 },
-                    { name: 'Groceries', amount: -2000 },
-                    { name: 'Leisure', amount: -1000 },
+                    { name: null, kind: 'expense', amount: -3000 },
+                    { name: 'Groceries', kind: 'expense', amount: -2000 },
+                    { name: 'Leisure', kind: 'expense', amount: -1000 },
                 ],
             }),
         );
@@ -102,5 +102,21 @@ describe('ForecastRestOfMonthCard', () => {
         expect(amountNextTo('Other spending, Groceries, and 1 more')).toMatch(
             /-.*60\.00/,
         );
+    });
+
+    it('lists the estimated income apart from the estimated spend', () => {
+        renderCard(
+            rest({
+                lines: [],
+                estimates: [
+                    { name: 'Salary', kind: 'income', amount: 245000 },
+                    { name: 'Groceries', kind: 'expense', amount: -2000 },
+                    { name: null, kind: 'income', amount: 1000 },
+                ],
+            }),
+        );
+
+        expect(amountNextTo('Salary and Other income')).toMatch(/2,460\.00/);
+        expect(amountNextTo('Groceries')).toMatch(/-.*20\.00/);
     });
 });

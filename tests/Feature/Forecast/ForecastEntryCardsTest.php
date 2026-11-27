@@ -316,7 +316,7 @@ describe('the cashflow card', function () {
                 ['name' => 'Freelance', 'date' => '2026-11-29', 'amount' => 50000],
                 ['name' => 'To broker', 'date' => '2026-11-30', 'amount' => -20000],
             ])
-            ->estimates->toBe([['name' => 'Groceries', 'amount' => -1300]])
+            ->estimates->toBe([['name' => 'Groceries', 'kind' => 'expense', 'amount' => -1300]])
             ->endBalance->toBe(100000 + 900000 - 4000 + 50000 - 20000 - 1300);
     });
 });

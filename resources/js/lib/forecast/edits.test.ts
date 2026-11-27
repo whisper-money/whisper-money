@@ -5,6 +5,7 @@ import {
     estimateDeltas,
     evaluateAlert,
     impactOn,
+    isAdjustableEstimate,
     withEstimateDeltas,
     withLine,
 } from '@/lib/forecast/edits';
@@ -251,6 +252,53 @@ describe('recomputing the forecast', () => {
         expect(accountMonths(adjusted, 'checking')[1].close).toBe(
             accountMonths(input(), 'checking')[1].close - 15000,
         );
+    });
+
+    it('moves only the estimate of the edited category and side', () => {
+        const base = {
+            ...input(),
+            estimates: [
+                {
+                    accountId: 'checking',
+                    month: '2026-12',
+                    amount: 250000,
+                    kind: 'income' as const,
+                    categoryId: 'food',
+                    day: 27,
+                },
+                {
+                    accountId: 'checking',
+                    month: '2026-12',
+                    amount: 30000,
+                    kind: 'expense' as const,
+                    categoryId: 'food',
+                    profile: null,
+                },
+            ],
+        };
+
+        const adjusted = withEstimateDeltas(
+            base,
+            { accountId: 'checking', categoryId: 'food', kind: 'income' },
+            { '2026-12': -50000 },
+        );
+
+        expect(adjusted.estimates?.map((estimate) => estimate.amount)).toEqual([
+            200000, 30000,
+        ]);
+        expect(adjusted.estimates?.[0].day).toBe(27);
+    });
+
+    it('cannot adjust other income, which a category-less adjustment would miss', () => {
+        expect(
+            isAdjustableEstimate({ section: 'income', categoryId: null }),
+        ).toBe(false);
+        expect(
+            isAdjustableEstimate({ section: 'income', categoryId: 'salary' }),
+        ).toBe(true);
+        expect(
+            isAdjustableEstimate({ section: 'expenses', categoryId: null }),
+        ).toBe(true);
     });
 });
 

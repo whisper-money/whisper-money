@@ -52,13 +52,13 @@ function estimateRows(
     return [
         estimateRow(
             'estimates-income',
-            estimates.filter((estimate) => estimate.amount > 0),
+            estimates.filter((estimate) => estimate.kind === 'income'),
             __('Other income'),
             locale,
         ),
         estimateRow(
             'estimates',
-            estimates.filter((estimate) => estimate.amount < 0),
+            estimates.filter((estimate) => estimate.kind === 'expense'),
             __('Other spending'),
             locale,
         ),

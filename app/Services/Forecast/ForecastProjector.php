@@ -152,7 +152,7 @@ final class ForecastProjector
         foreach ($estimates as $estimate) {
             $amount = max($estimate->amount, 0);
             $sign = $estimate->isIncome() ? 1 : -1;
-            $accumulator->addEstimate($amount, $estimate->isIncome());
+            $accumulator->addEstimate($estimate->kind, $amount);
 
             foreach ($this->spread($amount, $this->weights($estimate, $month)) as $day => $share) {
                 $byDay[$day] = ($byDay[$day] ?? 0) + $sign * $share;

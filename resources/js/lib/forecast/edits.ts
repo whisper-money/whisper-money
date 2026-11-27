@@ -237,6 +237,18 @@ export interface EstimateTarget {
     kind: MonthlyEstimateKind;
 }
 
+/**
+ * Whether the estimate sheet can adjust a group's estimate. An adjustment
+ * without a category always lands on "Other spending" (the server tells
+ * income from spend by the category), so "Other income" cannot be
+ * adjusted yet.
+ */
+export function isAdjustableEstimate(
+    group: Pick<ForecastGroup, 'section' | 'categoryId'>,
+): boolean {
+    return group.section !== 'income' || group.categoryId !== null;
+}
+
 /** Whether a group's estimate is income or spend. */
 export function estimateKind(group: ForecastGroup): MonthlyEstimateKind {
     return group.estimate?.kind ?? 'expense';

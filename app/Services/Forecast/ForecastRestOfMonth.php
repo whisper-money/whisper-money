@@ -35,7 +35,7 @@ class ForecastRestOfMonth
     /**
      * Null without a forecast line or an account to show.
      *
-     * @return array{month: string, currencyCode: string, lines: list<array{name: string, date: string, amount: int}>, estimates: list<array{name: string|null, amount: int}>, endBalance: int}|null
+     * @return array{month: string, currencyCode: string, lines: list<array{name: string, date: string, amount: int}>, estimates: list<array{name: string|null, kind: string, amount: int}>, endBalance: int}|null
      */
     public function for(User $user): ?array
     {
@@ -144,10 +144,10 @@ class ForecastRestOfMonth
     /**
      * What is left of each parent category's estimate, signed (income
      * positive, spend negative), largest first. A null name is "Other
-     * income" or "Other spending", told apart by the sign.
+     * income" or "Other spending", as `kind` says.
      *
      * @param  list<CategoryEstimate>  $estimates
-     * @return list<array{name: string|null, amount: int}>
+     * @return list<array{name: string|null, kind: string, amount: int}>
      */
     private function estimates(User $user, array $estimates): array
     {
@@ -155,7 +155,7 @@ class ForecastRestOfMonth
 
         foreach ($estimates as $estimate) {
             $key = $estimate->kind->value.':'.($estimate->categoryId ?? '');
-            $rows[$key] ??= ['categoryId' => $estimate->categoryId, 'amount' => 0];
+            $rows[$key] ??= ['categoryId' => $estimate->categoryId, 'kind' => $estimate->kind->value, 'amount' => 0];
             $rows[$key]['amount'] += $estimate->signedAmount();
         }
 
@@ -164,7 +164,7 @@ class ForecastRestOfMonth
         $names = Category::query()->where('user_id', $user->id)->whereKey(array_filter(array_column($rows, 'categoryId')))->pluck('name', 'id');
 
         return array_map(
-            fn (array $row): array => ['name' => $row['categoryId'] === null ? null : $names->get($row['categoryId']), 'amount' => $row['amount']],
+            fn (array $row): array => ['name' => $row['categoryId'] === null ? null : $names->get($row['categoryId']), 'kind' => $row['kind'], 'amount' => $row['amount']],
             $rows,
         );
     }
