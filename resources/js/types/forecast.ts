@@ -373,4 +373,40 @@ export interface ForecastPageProps {
     newSuggestionCount?: number;
     /** Only sent when the page asks for it (`only: ['review']`). */
     review?: ForecastReview;
+    /** The "What you pay every month" card; deferred, so undefined at first. */
+    recurringCharges?: ForecastRecurringCharges;
+}
+
+/** A charge that repeats, on the "What you pay every month" card. */
+export interface ForecastRecurringCharge {
+    /** Names the charge across visits, for "I'm dropping it" and "Keep". */
+    key: string;
+    name: string;
+    accountId: string;
+    accountName: string | null;
+    currencyCode: string;
+    frequency: 'monthly' | 'bimonthly' | 'quarterly' | 'yearly';
+    /** The median of its last three charges, positive, in minor units. */
+    amount: number;
+    /** What it costs a month and a year at its frequency. */
+    monthly: number;
+    yearly: number;
+    /** `YYYY-MM-DD`. */
+    lastChargedOn: string;
+    /** False when its category is not spend the forecast counts. */
+    canDrop: boolean;
+    /**
+     * Set once the user is dropping it: from which `YYYY-MM` month, and how
+     * much that took off the forecast a month (less than `monthly` when its
+     * category had less left).
+     */
+    drop: { id: string; month: string; reduction: number } | null;
+    kept: boolean;
+}
+
+export interface ForecastRecurringCharges {
+    /** The most expensive a month first. */
+    charges: ForecastRecurringCharge[];
+    /** What they all cost a month, per currency. */
+    totals: { currencyCode: string; monthly: number }[];
 }

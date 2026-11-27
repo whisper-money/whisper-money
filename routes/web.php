@@ -25,6 +25,8 @@ use App\Http\Controllers\Forecast\ForecastAccountSettingController;
 use App\Http\Controllers\Forecast\ForecastEstimateController;
 use App\Http\Controllers\Forecast\ForecastItemController;
 use App\Http\Controllers\Forecast\ForecastItemDriftController;
+use App\Http\Controllers\Forecast\ForecastRecurringDropController;
+use App\Http\Controllers\Forecast\ForecastRecurringKeepController;
 use App\Http\Controllers\Forecast\ForecastReviewController;
 use App\Http\Controllers\Forecast\ForecastSpikeController;
 use App\Http\Controllers\Forecast\ForecastStartOverController;
@@ -362,6 +364,10 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
         Route::post('forecast/review', [ForecastReviewController::class, 'store'])->name('forecast.review.store');
         Route::post('forecast/start-over', [ForecastStartOverController::class, 'store'])->name('forecast.start-over');
         Route::post('forecast/alerts/{alert}/snooze', [ForecastAlertSnoozeController::class, 'store'])->name('forecast.alerts.snooze');
+        Route::post('forecast/recurring-charges/drops', [ForecastRecurringDropController::class, 'store'])->name('forecast.recurring-charges.drops.store');
+        Route::delete('forecast/recurring-charges/drops/{drop}', [ForecastRecurringDropController::class, 'destroy'])->name('forecast.recurring-charges.drops.destroy');
+        Route::post('forecast/recurring-charges/keeps', [ForecastRecurringKeepController::class, 'store'])->name('forecast.recurring-charges.keeps.store');
+        Route::delete('forecast/recurring-charges/keeps', [ForecastRecurringKeepController::class, 'destroy'])->name('forecast.recurring-charges.keeps.destroy');
     });
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
