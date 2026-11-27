@@ -14,6 +14,10 @@ import {
     ForecastAllKpis,
     ForecastKpis,
 } from '@/components/forecast/forecast-kpis';
+import {
+    ForecastMobileAddButton,
+    ForecastMobileView,
+} from '@/components/forecast/forecast-mobile';
 import { ForecastPlanTable } from '@/components/forecast/forecast-plan-table';
 import {
     ForecastReviewDialog,
@@ -27,6 +31,7 @@ import {
     EmptyStateDescription,
     EmptyStateTitle,
 } from '@/components/ui/empty-state';
+import { useIsMobile } from '@/hooks/use-mobile';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { initiallyExpandedGroups } from '@/lib/forecast/plan-rows';
 import { type BreadcrumbItem } from '@/types';
@@ -283,6 +288,28 @@ function ForecastContent({
     );
 }
 
+/** The forecast on a phone, of one account or of all of them: one month at a time. */
+function MobileForecastContent({
+    forecast,
+    ...review
+}: ReviewProps & { forecast: ForecastData | ForecastAllData }) {
+    const [selectedMonth, setSelectedMonth] = useState(() =>
+        defaultMonth(forecast),
+    );
+
+    return (
+        <>
+            <NoLinesPrompt {...review} />
+            <ForecastMobileView
+                forecast={forecast}
+                selectedMonth={selectedMonth}
+                onSelectMonth={setSelectedMonth}
+                reviewAction={<ReviewLink {...review} />}
+            />
+        </>
+    );
+}
+
 /**
  * Every account together: the total, where its rise comes from, the plan by
  * category across the accounts and how each account closes.
@@ -362,6 +389,7 @@ export default function ForecastPage({
     review,
 }: ForecastPageProps) {
     const reviewState = useReview(reviewPrompt, !isEmpty(forecast));
+    const isMobile = useIsMobile();
     const breadcrumbs: BreadcrumbItem[] = [
         { title: __('Forecast'), href: forecastIndex().url },
     ];
@@ -377,21 +405,32 @@ export default function ForecastPage({
                 <div className="mx-auto flex w-full max-w-page flex-col gap-5 p-4">
                     <PageHeader
                         title={__('Forecast')}
-                        description={__(
-                            'How you are going to be, from what you know and what you usually spend. The more you make concrete, the more reliable it is.',
-                        )}
+                        description={
+                            isMobile
+                                ? undefined
+                                : __(
+                                      'How you are going to be, from what you know and what you usually spend. The more you make concrete, the more reliable it is.',
+                                  )
+                        }
+                        className={
+                            isMobile ? 'flex-nowrap items-center' : undefined
+                        }
                         actions={
-                            <div className="flex flex-wrap items-center gap-2">
-                                <ForecastHorizonPicker
-                                    horizon={forecast.horizon}
-                                    accountId={
-                                        forecast.scope === 'all'
-                                            ? 'all'
-                                            : (forecast.account?.id ?? null)
-                                    }
-                                />
-                                <AddButton />
-                            </div>
+                            isMobile ? (
+                                <ForecastMobileAddButton />
+                            ) : (
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <ForecastHorizonPicker
+                                        horizon={forecast.horizon}
+                                        accountId={
+                                            forecast.scope === 'all'
+                                                ? 'all'
+                                                : (forecast.account?.id ?? null)
+                                        }
+                                    />
+                                    <AddButton />
+                                </div>
+                            )
                         }
                     />
                     {isEmpty(forecast) ? (
@@ -414,6 +453,14 @@ export default function ForecastPage({
                                 </EmptyState>
                             </CardContent>
                         </Card>
+                    ) : isMobile ? (
+                        <MobileForecastContent
+                            key={`${forecast.scope === 'all' ? 'all' : forecast.account.id}:${forecast.horizon}`}
+                            forecast={forecast}
+                            reviewPrompt={reviewPrompt}
+                            newSuggestionCount={newSuggestionCount}
+                            onOpenReview={reviewState.openAt}
+                        />
                     ) : forecast.scope === 'all' ? (
                         <ForecastAllContent
                             key={`all:${forecast.horizon}`}

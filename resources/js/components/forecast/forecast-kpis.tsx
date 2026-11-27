@@ -32,6 +32,40 @@ function KpiCard({ children }: { children: React.ReactNode }) {
     );
 }
 
+/** "Wanted minimum 300 € · change": the account's threshold, and the way to its settings. */
+export function WantedMinimum({ forecast }: { forecast: ForecastData }) {
+    const { formatAmount } = useFormatAmount();
+    const editor = useForecastEditor();
+    const { minimumBalance } = forecast.account;
+
+    return (
+        <>
+            {minimumBalance === null
+                ? __('No wanted minimum')
+                : __('Wanted minimum :amount', {
+                      amount: formatAmount(
+                          minimumBalance,
+                          forecast.currencyCode,
+                          { fractionDigits: 0 },
+                      ),
+                  })}
+            {editor && (
+                <>
+                    {' · '}
+                    <button
+                        type="button"
+                        className="underline underline-offset-4 hover:text-foreground"
+                        onClick={() => editor.open({ kind: 'account' })}
+                        data-test="forecast-change-minimum"
+                    >
+                        {__('change')}
+                    </button>
+                </>
+            )}
+        </>
+    );
+}
+
 /** Where the horizon ends, and its likely range. */
 function EndKpi({
     end,
@@ -79,12 +113,8 @@ export function ForecastKpis({
     onAddYearly?: () => void;
 }) {
     const locale = useLocale();
-    const { formatAmount } = useFormatAmount();
-    const editor = useForecastEditor();
     const { kpis, currencyCode, account } = forecast;
     const share = kpis.concreteShare ?? 0;
-    const format = (amount: number) =>
-        formatAmount(amount, currencyCode, { fractionDigits: 0 });
 
     return (
         <div
@@ -102,24 +132,7 @@ export function ForecastKpis({
                     />
                 </StatTileValue>
                 <StatTileDescription>
-                    {account.minimumBalance === null
-                        ? __('No wanted minimum')
-                        : __('Wanted minimum :amount', {
-                              amount: format(account.minimumBalance),
-                          })}
-                    {editor && (
-                        <>
-                            {' · '}
-                            <button
-                                type="button"
-                                className="underline underline-offset-4 hover:text-foreground"
-                                onClick={() => editor.open({ kind: 'account' })}
-                                data-test="forecast-change-minimum"
-                            >
-                                {__('change')}
-                            </button>
-                        </>
-                    )}
+                    <WantedMinimum forecast={forecast} />
                 </StatTileDescription>
             </KpiCard>
             <EndKpi end={kpis.end} currencyCode={currencyCode} />

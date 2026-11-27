@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/sheet';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { monthLongName, monthWithYear } from '@/lib/forecast/format';
 import { type ForecastFrequency } from '@/lib/forecast/types';
 import { cn } from '@/lib/utils';
@@ -48,10 +49,18 @@ export function ForecastSheet({
     footer: ReactNode;
     testId: string;
 }) {
+    const isMobile = useIsMobile();
+
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
-                className="flex w-full flex-col gap-0 sm:max-w-[480px]"
+                side={isMobile ? 'bottom' : 'right'}
+                className={cn(
+                    'flex w-full flex-col gap-0',
+                    isMobile
+                        ? 'h-[calc(100dvh-env(safe-area-inset-top)-1rem)] rounded-t-xl pb-[env(safe-area-inset-bottom)]'
+                        : 'sm:max-w-[480px]',
+                )}
                 data-test={testId}
             >
                 <SheetHeader className="gap-1 border-b px-6 pt-6 pb-4">

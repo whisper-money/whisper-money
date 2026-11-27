@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { dayOf, listOf, monthLongName } from '@/lib/forecast/format';
+import { cn } from '@/lib/utils';
 import { type ForecastData } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import {
@@ -19,6 +20,8 @@ import { useState } from 'react';
 interface ForecastAlertsProps {
     forecast: ForecastData;
     onShowMonth: (month: string) => void;
+    /** The phone's card: the text stacked over one full-width button. */
+    compact?: boolean;
 }
 
 function lockedTitle(count: number): string {
@@ -71,7 +74,7 @@ export function FreePlanBanner({
     );
 }
 
-function StrongAlert({ forecast, onShowMonth }: ForecastAlertsProps) {
+function StrongAlert({ forecast, onShowMonth, compact }: ForecastAlertsProps) {
     const locale = useLocale();
     const { formatAmount } = useFormatAmount();
     const { alert, currencyCode } = forecast;
@@ -89,13 +92,23 @@ function StrongAlert({ forecast, onShowMonth }: ForecastAlertsProps) {
     return (
         <Alert
             variant="destructive"
-            className="flex flex-wrap items-center justify-between gap-4 border-destructive/30 bg-destructive/5 px-4 py-4"
+            className={cn(
+                'flex gap-4 border-destructive/30 bg-destructive/5 px-4 py-4',
+                compact
+                    ? 'flex-col gap-3 rounded-xl'
+                    : 'flex-wrap items-center justify-between',
+            )}
             data-test="forecast-alert-strong"
         >
             <div className="flex items-start gap-3">
                 <TriangleAlertIcon className="mt-0.5 size-5 shrink-0" />
                 <div className="flex flex-col gap-1">
-                    <AlertTitle className="text-sm font-semibold">
+                    <AlertTitle
+                        className={cn(
+                            'text-sm font-semibold',
+                            compact && 'line-clamp-none',
+                        )}
+                    >
                         {alert.minDate
                             ? __(
                                   'You will drop to :amount around :day :month',
@@ -134,22 +147,76 @@ function StrongAlert({ forecast, onShowMonth }: ForecastAlertsProps) {
                     </AlertDescription>
                 </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-                <Button
-                    variant="outline"
-                    className="border-destructive/30 bg-background text-destructive hover:text-destructive"
-                    onClick={() => onShowMonth(alert.month as string)}
-                >
-                    {__('See :month in the plan', { month })}
-                </Button>
-                <PlanTransferButton forecast={forecast} />
-            </div>
+            {compact ? (
+                <CompactAction
+                    forecast={forecast}
+                    onShowMonth={() => onShowMonth(alert.month as string)}
+                    label={__('See :month in the plan', { month })}
+                />
+            ) : (
+                <div className="flex flex-wrap gap-2">
+                    <Button
+                        variant="outline"
+                        className="border-destructive/30 bg-background text-destructive hover:text-destructive"
+                        onClick={() => onShowMonth(alert.month as string)}
+                    >
+                        {__('See :month in the plan', { month })}
+                    </Button>
+                    <PlanTransferButton forecast={forecast} />
+                </div>
+            )}
         </Alert>
     );
 }
 
+/**
+ * The phone's single full-width button: the suggested transfer when there is
+ * one, else the month the problem is in.
+ */
+function CompactAction({
+    forecast,
+    onShowMonth,
+    label,
+}: {
+    forecast: ForecastData;
+    onShowMonth: () => void;
+    label: string;
+}) {
+    const editor = useForecastEditor();
+    const canTransfer =
+        editor !== null &&
+        forecast.accounts.some(
+            (account) => account.id === forecast.alert.transfer?.fromAccountId,
+        );
+
+    if (canTransfer) {
+        return (
+            <PlanTransferButton
+                forecast={forecast}
+                className="h-auto min-h-11 w-full whitespace-normal"
+            />
+        );
+    }
+
+    return (
+        <Button
+            variant="outline"
+            className="h-auto min-h-11 w-full border-destructive/30 bg-background whitespace-normal text-destructive hover:text-destructive"
+            onClick={onShowMonth}
+        >
+            {label}
+        </Button>
+    );
+}
+
 /** "Planificar traspaso de 500 € desde Ahorro": the suggested transfer, prefilled. */
-function PlanTransferButton({ forecast }: { forecast: ForecastData }) {
+function PlanTransferButton({
+    forecast,
+    className,
+}: {
+    forecast: ForecastData;
+    className?: string;
+}) {
     const editor = useForecastEditor();
     const { formatAmount } = useFormatAmount();
     const transfer = forecast.alert.transfer;
@@ -164,6 +231,7 @@ function PlanTransferButton({ forecast }: { forecast: ForecastData }) {
     return (
         <Button
             variant="destructive"
+            className={className}
             onClick={() =>
                 editor.open(suggestedTransfer(transfer, forecast.account.id))
             }
@@ -228,7 +296,11 @@ function AllGood({ forecast }: { forecast: ForecastData }) {
  * soft one (only in the worst case), or that the account holds up. Without
  * Pro only the visible month is read, so "it holds up" is never said there.
  */
-export function ForecastAlerts({ forecast, onShowMonth }: ForecastAlertsProps) {
+export function ForecastAlerts({
+    forecast,
+    onShowMonth,
+    compact = false,
+}: ForecastAlertsProps) {
     const { alert, isPro, lockedAlertCount } = forecast;
 
     return (
@@ -237,7 +309,11 @@ export function ForecastAlerts({ forecast, onShowMonth }: ForecastAlertsProps) {
                 <FreePlanBanner lockedAlertCount={lockedAlertCount ?? 0} />
             )}
             {alert.level === 'strong' && (
-                <StrongAlert forecast={forecast} onShowMonth={onShowMonth} />
+                <StrongAlert
+                    forecast={forecast}
+                    onShowMonth={onShowMonth}
+                    compact={compact}
+                />
             )}
             {alert.softMonths.length > 0 && <SoftAlert forecast={forecast} />}
             {isPro && alert.level === 'ok' && <AllGood forecast={forecast} />}

@@ -306,7 +306,7 @@ export function AddLineRow({
     );
 }
 
-function AddLineButton({
+export function AddLineButton({
     section,
     group,
 }: {

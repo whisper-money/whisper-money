@@ -17,6 +17,7 @@ const mobileLabels: Record<string, Record<string, string>> = {
     en: {
         dashboard: 'Home',
         cashflow: 'Cashflow',
+        forecast: 'Forecast',
         accounts: 'Accounts',
         transactions: 'Movements',
         budgets: 'Plan',
@@ -24,6 +25,7 @@ const mobileLabels: Record<string, Record<string, string>> = {
     es: {
         dashboard: 'Inicio',
         cashflow: 'Cashflow',
+        forecast: 'Previsión',
         accounts: 'Cuentas',
         transactions: 'Movim.',
         budgets: 'Plan',
@@ -55,14 +57,13 @@ export function getMainNavItems(features: Features, locale: string): NavItem[] {
         });
     }
 
-    // Desktop only for now: the mobile bar swaps Accounts for it later.
     if (features.forecast) {
         items.push({
             type: 'nav-item',
             title: 'Forecast',
+            mobileTitle: getMobileLabel('forecast', locale),
             href: forecastIndex(),
             icon: ChartSpline,
-            mobile: false,
         });
     }
 
@@ -73,6 +74,10 @@ export function getMainNavItems(features: Features, locale: string): NavItem[] {
             mobileTitle: getMobileLabel('accounts', locale),
             href: accountsIndex(),
             icon: CreditCard,
+            // Forecast takes its place in the mobile bar: the accounts stay
+            // one tap away in the user menu's Organize grid and on the
+            // dashboard's account cards.
+            mobile: !features.forecast,
         },
         {
             type: 'nav-item',
@@ -91,6 +96,11 @@ export function getMainNavItems(features: Features, locale: string): NavItem[] {
     );
 
     return items;
+}
+
+/** The mobile bottom bar: the main items, less those kept off it. */
+export function getMobileNavItems(items: NavItem[]): NavItem[] {
+    return items.filter((item) => item.mobile !== false);
 }
 
 export const footerNavItems: NavItem[] = [];
