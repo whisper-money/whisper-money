@@ -13,6 +13,9 @@ namespace App\Services\Forecast\Backtest;
  * - `insideBand`: the share of actuals within the forecast's band, for the
  *   series that have one.
  * - `weightedError`: sum |actual - forecast| / sum |actual| (WAPE).
+ * - `above`: the share of actuals above the forecast, which tells a bias.
+ * - `bandFor80`: the 80th percentile of |actual - forecast| / |forecast|,
+ *   the band (as a share of the forecast) that would hold 80 % of actuals.
  */
 class BacktestReport
 {
@@ -34,7 +37,7 @@ class BacktestReport
     /**
      * @param  list<string>  $series  In the order to report them.
      * @param  int  $minCount  Rows with fewer observations are left out.
-     * @return list<array{series: string, horizon: int, count: int, medianError: float|null, p10: float|null, p90: float|null, insideBand: float|null, weightedError: float|null}>
+     * @return list<array{series: string, horizon: int, count: int, medianError: float|null, p10: float|null, p90: float|null, insideBand: float|null, weightedError: float|null, above: float, bandFor80: float|null}>
      */
     public function rows(array $series, int $minCount = 1): array
     {
@@ -58,7 +61,7 @@ class BacktestReport
 
     /**
      * @param  list<BacktestObservation>  $observations
-     * @return array{count: int, medianError: float|null, p10: float|null, p90: float|null, insideBand: float|null, weightedError: float|null}
+     * @return array{count: int, medianError: float|null, p10: float|null, p90: float|null, insideBand: float|null, weightedError: float|null, above: float, bandFor80: float|null}
      */
     private static function summary(array $observations): array
     {
@@ -73,6 +76,8 @@ class BacktestReport
             'p10' => self::percentile($ratios, 0.1),
             'p90' => self::percentile($ratios, 0.9),
             'insideBand' => $banded === [] ? null : count(array_filter($banded, fn (BacktestObservation $observation): bool => $observation->isInsideBand())) / count($banded),
+            'above' => count(array_filter($observations, fn (BacktestObservation $observation): bool => $observation->actual > $observation->forecast)) / count($observations),
+            'bandFor80' => self::percentile(self::present(array_map(fn (BacktestObservation $observation): ?float => $observation->errorOverForecast(), $observations)), 0.8),
             'weightedError' => $actual === 0 ? null : array_sum(array_map(fn (BacktestObservation $observation): int => abs($observation->actual - $observation->forecast), $observations)) / $actual,
         ];
     }

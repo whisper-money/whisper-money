@@ -2,8 +2,8 @@
 
 use App\Enums\AccountType;
 use App\Models\Account;
-use App\Models\Budget;
 use App\Models\AccountBalance;
+use App\Models\Budget;
 use App\Models\ForecastItem;
 use App\Models\User;
 use App\Services\Forecast\Backtest\BacktestObservation;
@@ -86,18 +86,18 @@ it('measures the forecast against what happened, next to a flat balance and the 
         ->toContain('Cut-offs: 3, from 2026-05-01 to 2026-10-01; actuals up to 2026-10-31')
         ->toContain('Baselines: a flat balance and the 3-month average net flow')
         // One cut-off per horizon: 1 Oct, 1 Aug and 1 May.
-        // N, median |error|, p10 and p90 of actual / forecast, inside the band.
-        ->and($rows[BacktestSeries::ACCOUNT.' @ 1'])->toBe(['1', '0.0 %', '1.00', '1.00', '100.0 %'])
-        ->and($rows[BacktestSeries::ACCOUNT.' @ 6'])->toBe(['1', '0.0 %', '1.00', '1.00', '100.0 %'])
+        // N, median |error|, p10 and p90 of actual / forecast, actual above the forecast, inside the band.
+        ->and($rows[BacktestSeries::ACCOUNT.' @ 1'])->toBe(['1', '0.0 %', '1.00', '1.00', '0.0 %', '100.0 %'])
+        ->and($rows[BacktestSeries::ACCOUNT.' @ 6'])->toBe(['1', '0.0 %', '1.00', '1.00', '0.0 %', '100.0 %'])
         // A flat balance misses 1,500 a month: 1,500 out of 16,000 after one month, 9,000 after six.
-        ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 1'])->toBe(['1', '9.4 %', '1.10', '1.10', '–'])
-        ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 3'])->toBe(['1', '28.1 %', '1.39', '1.39', '–'])
-        ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 6'])->toBe(['1', '56.3 %', '2.29', '2.29', '–'])
-        ->and($rows[BacktestSeries::ACCOUNT_NET_FLOW.' @ 6'])->toBe(['1', '0.0 %', '1.00', '1.00', '–'])
-        ->and($rows[BacktestSeries::TOTAL.' @ 3'])->toBe(['1', '0.0 %', '1.00', '1.00', '100.0 %'])
-        // N, median |error|, WAPE, p10, p90, inside the band.
-        ->and($rows[BacktestSeries::INCOME_CATEGORY.' @ 1'])->toBe(['1', '0.0 %', '0.0 %', '1.00', '1.00', '100.0 %'])
-        ->and($rows[BacktestSeries::EXPENSE_MONTH.' @ 6'])->toBe(['1', '0.0 %', '0.0 %', '1.00', '1.00', '100.0 %']);
+        ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 1'])->toBe(['1', '9.4 %', '1.10', '1.10', '100.0 %', '–'])
+        ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 3'])->toBe(['1', '28.1 %', '1.39', '1.39', '100.0 %', '–'])
+        ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 6'])->toBe(['1', '56.3 %', '2.29', '2.29', '100.0 %', '–'])
+        ->and($rows[BacktestSeries::ACCOUNT_NET_FLOW.' @ 6'])->toBe(['1', '0.0 %', '1.00', '1.00', '0.0 %', '–'])
+        ->and($rows[BacktestSeries::TOTAL.' @ 3'])->toBe(['1', '0.0 %', '1.00', '1.00', '0.0 %', '100.0 %'])
+        // N, median |error|, WAPE, p10, p90, actual above, inside the band, the band that would hold 80 %.
+        ->and($rows[BacktestSeries::INCOME_CATEGORY.' @ 1'])->toBe(['1', '0.0 %', '0.0 %', '1.00', '1.00', '0.0 %', '100.0 %', '±0.0 %'])
+        ->and($rows[BacktestSeries::EXPENSE_MONTH.' @ 6'])->toBe(['1', '0.0 %', '0.0 %', '1.00', '1.00', '0.0 %', '100.0 %', '±0.0 %']);
 });
 
 it('leaves out users with too little history, who set up a forecast or whose budgets came after the first cut-off', function () {
@@ -171,5 +171,7 @@ it('reports the median error, the spread of actual over forecast, the band and t
         ->and($row['p10'])->toEqualWithDelta(0.92, 1e-9)
         ->and($row['p90'])->toEqualWithDelta(1.08, 1e-9)
         ->and($row['insideBand'])->toBe(0.5)
+        ->and($row['above'])->toBe(0.25)
+        ->and($row['bandFor80'])->toEqualWithDelta(0.1, 1e-9)
         ->and($row['weightedError'])->toEqualWithDelta(23000 / 302000, 1e-9);
 });

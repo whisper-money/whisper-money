@@ -124,12 +124,12 @@ class ForecastBacktest extends Command
         $this->info('Baselines: a flat balance and the 3-month average net flow (the v1 forecast cannot be rebuilt as of a cut-off).');
         $this->info('The all-accounts total adds the accounts in the user\'s own currency only; its band is the sum of theirs.');
         $this->table(
-            ['Closing balance', 'Months', 'N', 'Median |error|', 'p10 actual/forecast', 'p90 actual/forecast', 'Inside band'],
-            array_map(fn (array $row): array => [$row['series'], $row['horizon'], $row['count'], self::percent($row['medianError']), self::ratio($row['p10']), self::ratio($row['p90']), self::percent($row['insideBand'])], $report->rows(BacktestSeries::BALANCES, $minCount)),
+            ['Closing balance', 'Months', 'N', 'Median |error|', 'p10 actual/forecast', 'p90 actual/forecast', 'Actual above', 'Inside band'],
+            array_map(fn (array $row): array => [$row['series'], $row['horizon'], $row['count'], self::percent($row['medianError']), self::ratio($row['p10']), self::ratio($row['p90']), self::percent($row['above']), self::percent($row['insideBand'])], $report->rows(BacktestSeries::BALANCES, $minCount)),
         );
         $this->table(
-            ['Income and spend', 'Month', 'N', 'Median |error|', 'WAPE', 'p10 actual/forecast', 'p90 actual/forecast', 'Inside band'],
-            array_map(fn (array $row): array => [$row['series'], $row['horizon'], $row['count'], self::percent($row['medianError']), self::percent($row['weightedError']), self::ratio($row['p10']), self::ratio($row['p90']), self::percent($row['insideBand'])], $report->rows(BacktestSeries::FLOWS, $minCount)),
+            ['Income and spend', 'Month', 'N', 'Median |error|', 'WAPE', 'p10 actual/forecast', 'p90 actual/forecast', 'Actual above', 'Inside band', 'Band for 80 %'],
+            array_map(fn (array $row): array => [$row['series'], $row['horizon'], $row['count'], self::percent($row['medianError']), self::percent($row['weightedError']), self::ratio($row['p10']), self::ratio($row['p90']), self::percent($row['above']), self::percent($row['insideBand']), $row['bandFor80'] === null ? '–' : '±'.self::percent($row['bandFor80'])], $report->rows(BacktestSeries::FLOWS, $minCount)),
         );
     }
 

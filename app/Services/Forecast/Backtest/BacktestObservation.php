@@ -39,6 +39,15 @@ final readonly class BacktestObservation
     }
 
     /**
+     * The error as a share of the forecast, the width a band would need to
+     * reach the actual, or null when the forecast is too small for it.
+     */
+    public function errorOverForecast(): ?float
+    {
+        return abs($this->forecast) < $this->floor ? null : abs($this->actual - $this->forecast) / abs($this->forecast);
+    }
+
+    /**
      * What really happened over what was forecast, or null when the forecast
      * is not a clear positive figure.
      */
