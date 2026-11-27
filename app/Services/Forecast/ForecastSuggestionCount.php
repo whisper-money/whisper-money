@@ -6,8 +6,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * How many suggestions the user has not answered yet in a space, for the
- * plan's "Recurring detected (N new)" link. Working them out reads 18 months
+ * How many yearly suggestions the user has not answered yet in a space, for
+ * the plan's "Yearly payments found (N new)" link. Working them out reads 18 months
  * of history, so the count is kept for a week: the weekly refresh works it
  * out again, and answering the review forgets it.
  */
@@ -37,9 +37,7 @@ class ForecastSuggestionCount
 
     private function count(User $user, string $spaceId): int
     {
-        $suggestions = $this->suggestions->for($user, $spaceId);
-
-        return count($suggestions['recurring']) + count($suggestions['annual']);
+        return count($this->suggestions->for($user, $spaceId));
     }
 
     private function key(User $user, string $spaceId): string

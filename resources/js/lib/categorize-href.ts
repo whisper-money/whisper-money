@@ -2,9 +2,9 @@ import { index as transactionsIndex } from '@/routes/transactions';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 
 /**
- * The transactions list filtered to what has no category, for the two places
- * that ask for that work: the uncategorized toast and the dashboard's "Finish
- * setting up" card.
+ * The transactions list filtered to what has no category, for the places
+ * that ask for that work: the uncategorized toast, the dashboard's "Finish
+ * setting up" card and the forecast review's notice.
  *
  * Straight to the pile each one is asking about, and to nothing else. The
  * toast counts the month in progress, so it passes `monthInProgress` and its
@@ -14,16 +14,28 @@ import { endOfMonth, format, startOfMonth } from 'date-fns';
  */
 export function categorizeHref({
     monthInProgress = false,
-}: { monthInProgress?: boolean } = {}): string {
+    period,
+    accountIds = [],
+}: {
+    monthInProgress?: boolean;
+    /** The days the count read, `Y-m-d`: the forecast review counts three months. */
+    period?: { from: string; to: string };
+    /** Only these accounts, when the count read only them. */
+    accountIds?: string[];
+} = {}): string {
     const today = new Date();
-    const monthRange = monthInProgress
-        ? {
-              date_from: format(startOfMonth(today), 'yyyy-MM-dd'),
-              date_to: format(endOfMonth(today), 'yyyy-MM-dd'),
-          }
-        : {};
+    const range = period
+        ? { date_from: period.from, date_to: period.to }
+        : monthInProgress
+          ? {
+                date_from: format(startOfMonth(today), 'yyyy-MM-dd'),
+                date_to: format(endOfMonth(today), 'yyyy-MM-dd'),
+            }
+          : {};
+    const accounts =
+        accountIds.length > 0 ? { account_ids: accountIds.join(',') } : {};
 
     return transactionsIndex({
-        query: { category_ids: 'uncategorized', ...monthRange },
+        query: { category_ids: 'uncategorized', ...range, ...accounts },
     }).url;
 }

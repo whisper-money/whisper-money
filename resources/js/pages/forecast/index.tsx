@@ -78,32 +78,40 @@ function AddButton() {
 }
 
 /**
- * Where skipping the review is remembered, per user, so the review that opens
- * on its own the first time does not open again on every visit.
+ * Where closing the review is remembered, per user: `1` when it was skipped,
+ * `done` once it was answered. Either way the review that opens on its own
+ * the first time does not open again on every visit; once answered, the
+ * page no longer asks for it either.
  */
-function skippedKey(userId: string | undefined): string {
+function closedKey(userId: string | undefined): string {
     return `forecast-review-skipped:${userId ?? 'guest'}`;
 }
 
-function reviewWasSkipped(userId: string | undefined): boolean {
+function reviewClosed(userId: string | undefined): string | null {
     try {
-        return window.localStorage.getItem(skippedKey(userId)) === '1';
+        return window.localStorage.getItem(closedKey(userId));
     } catch {
-        return false;
+        return null;
     }
 }
 
-function rememberReviewSkipped(userId: string | undefined): void {
+function rememberReviewClosed(
+    userId: string | undefined,
+    how: 'skipped' | 'done',
+): void {
     try {
-        window.localStorage.setItem(skippedKey(userId), '1');
+        window.localStorage.setItem(
+            closedKey(userId),
+            how === 'done' ? 'done' : '1',
+        );
     } catch {
         // Private mode: the review may open again next time, which is fine.
     }
 }
 
-function forgetReviewSkipped(userId: string | undefined): void {
+function forgetReviewClosed(userId: string | undefined): void {
     try {
-        window.localStorage.removeItem(skippedKey(userId));
+        window.localStorage.removeItem(closedKey(userId));
     } catch {
         // Private mode: nothing was remembered.
     }
@@ -113,14 +121,19 @@ function forgetReviewSkipped(userId: string | undefined): void {
  * The page's review: it opens on its own the first time the user comes with
  * no line at all, and on demand from the plan's link, the empty state or the
  * "yearly payments" shortcut. Closing it without saving, while there is still
- * no line, counts as skipping it. Starting the forecast over forgets that it
- * was skipped and opens it again, as the first time.
+ * no line, counts as skipping it; saving it counts as done, even when it
+ * added no line, since the first step only shows the estimates. Starting the
+ * forecast over forgets both and opens it again, as the first time.
+ *
+ * `prompt` is the page's prompt as the rest of the page reads it: a review
+ * answered in this browser counts as having lines.
  */
 function useReview(prompt: ForecastReviewPrompt, canReview: boolean) {
     const userId = usePage<{ auth?: { user?: { id?: string } } }>().props.auth
         ?.user?.id;
     const [open, setOpen] = useState(false);
     const [step, setStep] = useState<ForecastReviewStep>(1);
+    const [done, setDone] = useState(false);
     const checkedArrival = useRef(false);
 
     useEffect(() => {
@@ -129,8 +142,11 @@ function useReview(prompt: ForecastReviewPrompt, canReview: boolean) {
         }
 
         checkedArrival.current = true;
+        const closed = reviewClosed(userId);
 
-        if (canReview && !prompt.hasLines && !reviewWasSkipped(userId)) {
+        if (closed === 'done') {
+            setDone(true);
+        } else if (canReview && !prompt.hasLines && closed === null) {
             setOpen(true);
         }
     }, [canReview, prompt.hasLines, userId]);
@@ -138,20 +154,26 @@ function useReview(prompt: ForecastReviewPrompt, canReview: boolean) {
     return {
         open,
         step,
+        prompt: { ...prompt, hasLines: prompt.hasLines || done },
         openAt: (at: ForecastReviewStep) => {
             setStep(at);
             setOpen(true);
         },
         onOpenChange: (next: boolean) => {
-            if (!next && !prompt.hasLines) {
-                rememberReviewSkipped(userId);
+            if (!next && !prompt.hasLines && !done) {
+                rememberReviewClosed(userId, 'skipped');
             }
 
             setOpen(next);
         },
-        onSaved: () => setOpen(false),
+        onSaved: () => {
+            rememberReviewClosed(userId, 'done');
+            setDone(true);
+            setOpen(false);
+        },
         onStartedOver: () => {
-            forgetReviewSkipped(userId);
+            forgetReviewClosed(userId);
+            setDone(false);
             setStep(1);
             setOpen(true);
         },
@@ -159,13 +181,7 @@ function useReview(prompt: ForecastReviewPrompt, canReview: boolean) {
 }
 
 /** The page of a user with no line yet: everything is estimated. */
-function NoLinesYet({
-    newCount,
-    onReview,
-}: {
-    newCount: number | undefined;
-    onReview: () => void;
-}) {
+function NoLinesYet({ onReview }: { onReview: () => void }) {
     return (
         <Card data-test="forecast-no-lines">
             <CardContent>
@@ -175,18 +191,14 @@ function NoLinesYet({
                     </EmptyStateTitle>
                     <EmptyStateDescription>
                         {__(
-                            'Confirm what repeats in your movements (salary, rent, bills) and add your yearly payments, and the forecast will rest on what you know instead of on averages.',
+                            'Check how we have estimated each category from your last months and add your yearly payments, so the forecast does not miss what you already know.',
                         )}
                     </EmptyStateDescription>
                     <Button
                         onClick={onReview}
                         data-test="forecast-start-review"
                     >
-                        {newCount === undefined || newCount > 0
-                            ? __('Review what we found (:count)', {
-                                  count: newCount ?? '…',
-                              })
-                            : __('Add your yearly payments')}
+                        {__('Review your forecast')}
                     </Button>
                 </EmptyState>
             </CardContent>
@@ -200,7 +212,7 @@ interface ReviewProps {
     onOpenReview: (step: ForecastReviewStep) => void;
 }
 
-/** "Recurring detected (2 new)", over the plan once the user has lines. */
+/** "Yearly payments found (2 new)", over the plan once the user has lines. */
 function ReviewLink({
     reviewPrompt,
     newSuggestionCount,
@@ -214,12 +226,12 @@ function ReviewLink({
         <button
             type="button"
             className="text-[13px] underline underline-offset-4 hover:text-foreground/80"
-            onClick={() => onOpenReview(1)}
+            onClick={() => onOpenReview(2)}
             data-test="forecast-review-link"
         >
             {newSuggestionCount === 1
-                ? __('Recurring detected (1 new)')
-                : __('Recurring detected (:count new)', {
+                ? __('Yearly payments found (1 new)')
+                : __('Yearly payments found (:count new)', {
                       count: newSuggestionCount,
                   })}
         </button>
@@ -227,21 +239,12 @@ function ReviewLink({
 }
 
 /** The page of a user with no line yet, which leads to the review. */
-function NoLinesPrompt({
-    reviewPrompt,
-    newSuggestionCount,
-    onOpenReview,
-}: ReviewProps) {
+function NoLinesPrompt({ reviewPrompt, onOpenReview }: ReviewProps) {
     if (reviewPrompt.hasLines) {
         return null;
     }
 
-    return (
-        <NoLinesYet
-            newCount={newSuggestionCount}
-            onReview={() => onOpenReview(newSuggestionCount === 0 ? 2 : 1)}
-        />
-    );
+    return <NoLinesYet onReview={() => onOpenReview(1)} />;
 }
 
 function ForecastContent({
@@ -502,7 +505,7 @@ export default function ForecastPage({
                         <MobileForecastContent
                             key={`${forecast.scope === 'all' ? 'all' : forecast.account.id}:${forecast.horizon}`}
                             forecast={forecast}
-                            reviewPrompt={reviewPrompt}
+                            reviewPrompt={reviewState.prompt}
                             newSuggestionCount={newSuggestionCount}
                             onOpenReview={reviewState.openAt}
                         />
@@ -510,7 +513,7 @@ export default function ForecastPage({
                         <ForecastAllContent
                             key={`all:${forecast.horizon}`}
                             forecast={forecast}
-                            reviewPrompt={reviewPrompt}
+                            reviewPrompt={reviewState.prompt}
                             newSuggestionCount={newSuggestionCount}
                             onOpenReview={reviewState.openAt}
                         />
@@ -518,7 +521,7 @@ export default function ForecastPage({
                         <ForecastContent
                             key={`${forecast.account.id}:${forecast.horizon}`}
                             forecast={forecast}
-                            reviewPrompt={reviewPrompt}
+                            reviewPrompt={reviewState.prompt}
                             newSuggestionCount={newSuggestionCount}
                             onOpenReview={reviewState.openAt}
                         />

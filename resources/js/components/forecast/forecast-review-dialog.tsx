@@ -1,13 +1,13 @@
 import { store } from '@/actions/App/Http/Controllers/Forecast/ForecastReviewController';
 import { ForecastReviewAnnualStep } from '@/components/forecast/forecast-review-annual-step';
-import { ForecastReviewRecurringStep } from '@/components/forecast/forecast-review-recurring-step';
+import { ForecastReviewEstimatesStep } from '@/components/forecast/forecast-review-estimates-step';
+import { ForecastReviewUncategorized } from '@/components/forecast/forecast-review-uncategorized';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
     incompletePayment,
-    initialDrafts,
     reviewAnswers,
     type ManualPaymentDraft,
     type ReviewError,
@@ -34,10 +34,12 @@ interface ForecastReviewDialogProps {
 }
 
 /**
- * The forecast's review in two steps, the recurring movements and then the
- * yearly payments: a dialog on a computer, the whole screen on a phone.
- * Nothing is stored until the last step is sent; "Not now", Esc or the close
- * button leave everything as it was.
+ * The forecast's review in two steps, how each category is estimated and
+ * then the yearly payments, after a notice when too much money has no
+ * category: a dialog on a computer, the whole screen on a phone. A figure
+ * changed in the first step is stored at once; the yearly payments only
+ * when the last step is sent. "Not now", Esc or the close button leave
+ * them out.
  */
 export function ForecastReviewDialog({
     open,
@@ -59,9 +61,7 @@ export function ForecastReviewDialog({
     const content = review ? (
         <ReviewFlow
             // New suggestions (after "Load them again") start a new review.
-            key={[...review.recurring, ...review.annual]
-                .map((suggestion) => suggestion.key)
-                .join(',')}
+            key={review.annual.map((suggestion) => suggestion.key).join(',')}
             review={review}
             initialStep={initialStep}
             defaultAccountId={defaultAccountId}
@@ -131,10 +131,8 @@ function ReviewFlow({
     onSaved: () => void;
 }) {
     const [step, setStep] = useState<ForecastReviewStep>(initialStep);
-    // Opened straight on the yearly payments, the recurring ones were never
-    // shown: they are neither kept nor dismissed.
-    const [sawRecurring, setSawRecurring] = useState(initialStep === 1);
-    const [drafts, setDrafts] = useState(() => initialDrafts(review.recurring));
+    // Read once, before the first step: going back from step 2 skips it.
+    const [noticeSeen, setNoticeSeen] = useState(initialStep !== 1);
     const [addedAnnual, setAddedAnnual] = useState<Set<string>>(new Set());
     const [manual, setManual] = useState<ManualPaymentDraft[]>([]);
     const [processing, setProcessing] = useState(false);
@@ -161,35 +159,44 @@ function ReviewFlow({
         router.post(
             store.url(),
             // Spread into a plain object: Inertia's payload type is a record.
-            {
-                ...reviewAnswers(
-                    sawRecurring ? drafts : [],
-                    review.annual,
-                    addedAnnual,
-                    manual,
-                ),
-            },
+            { ...reviewAnswers(review.annual, addedAnnual, manual) },
             {
                 preserveScroll: true,
                 onSuccess: onSaved,
                 onError: (errors) =>
                     setError({
-                        message: errors.lines
-                            ? errors.lines
+                        message: errors.annual
+                            ? errors.annual
                             : __('We could not save your answers. Try again.'),
-                        stale: Boolean(errors.lines),
+                        stale: Boolean(errors.annual),
                     }),
                 onFinish: () => setProcessing(false),
             },
         );
     };
 
+    if (step === 1 && !noticeSeen && review.uncategorized) {
+        return (
+            <ForecastReviewUncategorized
+                uncategorized={review.uncategorized}
+                accountIds={
+                    review.accountId
+                        ? [review.accountId]
+                        : review.accounts.map((account) => account.id)
+                }
+                onSkip={onSkip}
+                onContinue={() => setNoticeSeen(true)}
+            />
+        );
+    }
+
     if (step === 1) {
         return (
-            <ForecastReviewRecurringStep
-                review={review}
-                drafts={drafts}
-                onDraftsChange={setDrafts}
+            <ForecastReviewEstimatesStep
+                estimates={review.estimates}
+                showAccounts={
+                    review.accountId === null && review.accounts.length > 1
+                }
                 onSkip={onSkip}
                 onNext={() => setStep(2)}
             />
@@ -211,7 +218,7 @@ function ReviewFlow({
             isPro={isPro}
             onReload={() => router.reload({ only: ['review'] })}
             onBack={() => {
-                setSawRecurring(true);
+                setNoticeSeen(true);
                 setStep(1);
             }}
             onFinish={finish}

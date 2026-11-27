@@ -19,7 +19,8 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * Stores the lines the review confirms.
+ * Stores the lines the review adds: the yearly suggestions the user adds and
+ * the payments they type in.
  *
  * A line confirmed from suggestions keeps the first one's identity as its
  * fingerprint, so it is not suggested again, and recognises the charges of
@@ -46,10 +47,10 @@ class ForecastLineWriter
     private const PAIRING_DAYS = 45;
 
     /**
-     * How far from its date a detected line's payment is recognised: the
-     * column's default, which merges are checked against too.
+     * How far from its date a suggested line's payment is recognised: the
+     * column's default.
      */
-    public const DATE_WINDOW_DAYS = 3;
+    private const DATE_WINDOW_DAYS = 3;
 
     /**
      * How early the first charge may have paid the schedule's first date (a
@@ -71,15 +72,17 @@ class ForecastLineWriter
     ) {}
 
     /**
+     * The line is stored as the user's own (`manual`): they added it in the
+     * review, and detected lines no longer project (ForecastItem::projecting()).
+     * A transfer whose other account the history does not show leaves the app.
+     *
      * @param  non-empty-list<ForecastCandidate>  $candidates  All on the same account.
-     * @param  string|null  $destinationAccountId  For a transfer whose other account the history does not show.
      */
-    public function fromCandidates(User $user, string $spaceId, array $candidates, ?string $name = null, ?string $destinationAccountId = null): ForecastItem
+    public function fromCandidates(User $user, string $spaceId, array $candidates): ForecastItem
     {
         $primary = self::primaryOf($candidates);
         $samples = Transaction::query()->whereIn('id', array_merge(...array_map(fn (ForecastCandidate $candidate): array => $candidate->transactionIds, $candidates)))->get()->keyBy('id');
-        $destination = $primary->destinationAccountId
-            ?? ($primary->destinationUnknown && $destinationAccountId !== $primary->accountId ? $destinationAccountId : null);
+        $destination = $primary->destinationAccountId;
         $anchor = $this->anchorBefore($primary, $samples);
 
         $item = ForecastItem::query()->create([
@@ -89,11 +92,11 @@ class ForecastLineWriter
             'destination_account_id' => $destination,
             'destination_external' => $destination === null && $primary->destinationUnknown,
             'category_id' => $primary->categoryId,
-            'name' => $this->name($name, $primary->name),
+            'name' => $this->name($primary->name, ''),
             'kind' => $primary->frequency === ForecastFrequency::Once ? ForecastItemKind::OneOff : ForecastItemKind::Recurring,
             'frequency' => $primary->frequency,
             'anchor_date' => $anchor,
-            'source' => ForecastItemSource::Detected,
+            'source' => ForecastItemSource::Manual,
             'confidence' => $primary->confidence,
             'match_rules_json' => ForecastMatchRules::forFingerprints(array_map(fn (ForecastCandidate $candidate): array => [
                 'fingerprint' => $candidate->fingerprint,
@@ -132,7 +135,7 @@ class ForecastLineWriter
      *
      * @param  non-empty-list<ForecastCandidate>  $candidates
      */
-    public static function primaryOf(array $candidates): ForecastCandidate
+    private static function primaryOf(array $candidates): ForecastCandidate
     {
         usort($candidates, fn (ForecastCandidate $a, ForecastCandidate $b): int => abs($b->amount) <=> abs($a->amount));
 

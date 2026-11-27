@@ -8,12 +8,10 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * The answers of the forecast's review: the suggestions kept as lines (each
- * one or several suggestions merged, optionally renamed, and for a transfer
- * the app cannot see the other side of, the account it goes to), the
- * suggestions left out, and the yearly or one-off payments typed in, with a
- * signed amount in the account's minor units. Accounts must be ones the
- * forecast includes, so another user's ids are refused.
+ * The answers of the forecast's review: the keys of the yearly suggestions
+ * added, those of the ones left out, and the yearly or one-off payments
+ * typed in, with a signed amount in the account's minor units. Accounts must
+ * be ones the forecast includes, so another user's ids are refused.
  */
 class StoreForecastReviewRequest extends FormRequest
 {
@@ -32,11 +30,8 @@ class StoreForecastReviewRequest extends FormRequest
         $accounts = Rule::in(app(ForecastAccounts::class)->included($this->user(), $this->user()->activeSpace()->id)->modelKeys());
 
         return [
-            'lines' => ['present', 'array', 'max:200'],
-            'lines.*.keys' => ['required', 'array', 'min:1', 'max:10'],
-            'lines.*.keys.*' => ['required', 'string', 'max:1000', 'distinct'],
-            'lines.*.name' => ['nullable', 'string', 'max:255'],
-            'lines.*.destinationAccountId' => ['nullable', 'string', $accounts],
+            'annual' => ['present', 'array', 'max:200'],
+            'annual.*' => ['required', 'string', 'max:1000', 'distinct'],
             'dismissed' => ['present', 'array', 'max:400'],
             'dismissed.*' => ['string', 'max:1000'],
             'manual' => ['present', 'array', 'max:50'],
@@ -49,11 +44,11 @@ class StoreForecastReviewRequest extends FormRequest
     }
 
     /**
-     * @return array{lines: list<array{keys: list<string>, name?: string|null, destinationAccountId?: string|null}>, dismissed: list<string>, manual: list<array{name: string, amount: int, month: int, accountId: string, frequency: string}>}
+     * @return array{annual: list<string>, dismissed: list<string>, manual: list<array{name: string, amount: int, month: int, accountId: string, frequency: string}>}
      */
     public function answers(): array
     {
-        /** @var array{lines: list<array{keys: list<string>, name?: string|null, destinationAccountId?: string|null}>, dismissed: list<string>, manual: list<array{name: string, amount: int, month: int, accountId: string, frequency: string}>} $answers */
+        /** @var array{annual: list<string>, dismissed: list<string>, manual: list<array{name: string, amount: int, month: int, accountId: string, frequency: string}>} $answers */
         $answers = $this->validated();
 
         return $answers;

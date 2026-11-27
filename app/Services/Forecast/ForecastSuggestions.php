@@ -8,11 +8,11 @@ use App\Models\User;
 use App\Services\Forecast\Data\ForecastCandidate;
 
 /**
- * The lines the forecast proposes to a user in one space, read from the last
- * 18 months of the accounts the forecast includes: the recurring ones (and transfers) for the first step of the
- * review, the yearly ones for the second. A suggestion the user dismissed, or
- * one an existing line of the same account already covers by fingerprint, is
- * not proposed again. Nothing is stored.
+ * The yearly payments the forecast proposes to a user in one space, for the
+ * second step of the review, read from the last 18 months of the accounts
+ * the forecast includes. A suggestion the user dismissed, or one an
+ * existing line of the same account already covers by fingerprint, is not
+ * proposed again. Nothing is stored.
  */
 class ForecastSuggestions
 {
@@ -20,7 +20,6 @@ class ForecastSuggestions
 
     public function __construct(
         private readonly ForecastHistory $history,
-        private readonly RecurringDetector $recurring,
         private readonly AnnualSuggester $annual,
         private readonly TransferPairer $pairer,
         private readonly DescriptionFingerprint $fingerprint,
@@ -28,7 +27,7 @@ class ForecastSuggestions
     ) {}
 
     /**
-     * @return array{recurring: list<ForecastCandidate>, annual: list<ForecastCandidate>}
+     * @return list<ForecastCandidate>
      */
     public function for(User $user, string $spaceId, ?string $today = null): array
     {
@@ -42,10 +41,7 @@ class ForecastSuggestions
         $isNew = fn (ForecastCandidate $candidate): bool => ! isset($known['dismissed'][$candidate->kind->value.'|'.$candidate->identity()])
             && ! isset($known['planned'][$candidate->accountId.'|'.$candidate->identity()]);
 
-        return [
-            'recurring' => array_values(array_filter($this->recurring->detect($groups, $legs, $today), $isNew)),
-            'annual' => array_values(array_filter($this->annual->suggest($groups, $legs, $today), $isNew)),
-        ];
+        return array_values(array_filter($this->annual->suggest($groups, $legs, $today), $isNew));
     }
 
     /**

@@ -995,7 +995,23 @@ describe('the review on the forecast page', () => {
         expect(reload).toHaveBeenCalledWith({ only: ['review'] });
         expect(
             document.querySelector('[data-test="forecast-no-lines"]'),
-        ).toHaveTextContent('Review what we found (3)');
+        ).toHaveTextContent('Review your forecast');
+    });
+
+    it('neither opens nor asks for it again once it was answered', () => {
+        window.localStorage.setItem('forecast-review-skipped:guest', 'done');
+
+        renderPage(forecast(), null, { hasLines: false }, 2);
+
+        expect(
+            document.querySelector('[data-test="forecast-review"]'),
+        ).toBeNull();
+        expect(
+            document.querySelector('[data-test="forecast-no-lines"]'),
+        ).toBeNull();
+        expect(
+            document.querySelector('[data-test="forecast-review-link"]'),
+        ).toHaveTextContent('Yearly payments found (2 new)');
     });
 
     it('does not open on its own again once skipped', () => {
@@ -1028,7 +1044,7 @@ describe('the review on the forecast page', () => {
         const link = document.querySelector(
             '[data-test="forecast-review-link"]',
         )!;
-        expect(link).toHaveTextContent('Recurring detected (2 new)');
+        expect(link).toHaveTextContent('Yearly payments found (2 new)');
 
         fireEvent.click(link);
         expect(
@@ -1156,7 +1172,7 @@ describe('the "All accounts" view', () => {
         const link = document.querySelector(
             '[data-test="forecast-review-link"]',
         )!;
-        expect(link).toHaveTextContent('Recurring detected (2 new)');
+        expect(link).toHaveTextContent('Yearly payments found (2 new)');
 
         fireEvent.click(link);
         expect(

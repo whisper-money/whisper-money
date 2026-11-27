@@ -1,35 +1,34 @@
 <?php
 
 use App\Enums\AccountType;
-use App\Enums\CategoryType;
+use App\Enums\ForecastEstimateKind;
 use App\Enums\ForecastFrequency;
 use App\Enums\ForecastItemKind;
 use App\Enums\ForecastItemSource;
-use App\Enums\ForecastMatchedBy;
 use App\Enums\ForecastSuggestionKind;
 use App\Features\Forecast;
 use App\Models\Account;
 use App\Models\AccountBalance;
-use App\Models\Category;
+use App\Models\ExchangeRate;
 use App\Models\ForecastDismissal;
+use App\Models\ForecastEstimateAdjustment;
 use App\Models\ForecastItem;
-use App\Models\ForecastMatch;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Forecast\ForecastMatcher;
 use App\Services\Forecast\ForecastPlanBuilder;
 use App\Services\Forecast\ForecastReviewPresenter;
 use App\Services\Forecast\ForecastSuggestionCount;
-use App\Services\Forecast\ForecastSuggestions;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Pennant\Feature;
 
 /**
  * A checking account paid a salary on the 28th, charged rent on the 1st and
- * two streaming services on the 15th and 16th for the last 12 months, with a
- * home insurance charged once a year in June: three monthly suggestions, two
- * of them of the same kind, and one yearly.
+ * a streaming service and a restaurant on the 15th and 16th for the last 12 months, and
+ * moved 500 € to savings on the 2nd; a home insurance is charged once a
+ * year in June. Everything has a category but the insurance and the
+ * transfer, which pairs with its savings leg.
  */
 beforeEach(function () {
     $this->travelTo('2026-11-26 12:00:00');
@@ -43,13 +42,16 @@ beforeEach(function () {
     $this->savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->user->id, 'name' => 'Savings', 'currency_code' => 'EUR']);
     AccountBalance::factory()->create(['account_id' => $this->checking->id, 'balance_date' => '2026-11-20', 'balance' => 300000]);
 
+    $this->salary = forecastIncomeCategory($this->user, name: 'Salary');
     $this->housing = forecastExpenseCategory($this->user, name: 'Housing');
     $this->leisure = forecastExpenseCategory($this->user, name: 'Leisure');
 
-    $this->salary = forecastMonthlyCharges($this->checking, '2025-11-28', 12, 250000, 'NOMINA ACME SL');
-    $this->rent = forecastMonthlyCharges($this->checking, '2025-12-01', 12, -85000, 'ALQUILER PISO CENTRO', $this->housing);
-    $this->netflix = forecastMonthlyCharges($this->checking, '2025-12-15', 12, -1299, 'NETFLIX COM', $this->leisure);
-    $this->hbo = forecastMonthlyCharges($this->checking, '2025-12-16', 12, -999, 'HBO MAX', $this->leisure);
+    forecastMonthlyCharges($this->checking, '2025-11-28', 12, 250000, 'NOMINA ACME SL', $this->salary);
+    forecastMonthlyCharges($this->checking, '2025-12-01', 12, -85000, 'ALQUILER PISO CENTRO', $this->housing);
+    forecastMonthlyCharges($this->checking, '2025-12-15', 12, -1299, 'NETFLIX COM', $this->leisure);
+    forecastMonthlyCharges($this->checking, '2025-12-16', 12, -4701, 'RESTAURANTE EL PUERTO', $this->leisure);
+    forecastMonthlyCharges($this->checking, '2026-08-02', 4, -50000, 'TRASPASO AHORRO');
+    forecastMonthlyCharges($this->savings, '2026-08-02', 4, 50000, 'TRASPASO AHORRO');
     forecastCharge($this->checking, '2025-06-10', -32000, 'MAPFRE SEGURO HOGAR POLIZA');
     forecastCharge($this->checking, '2026-06-08', -34500, 'MAPFRE SEGURO HOGAR POLIZA');
 });
@@ -57,17 +59,17 @@ beforeEach(function () {
 /**
  * @return array<string, mixed>
  */
-function reviewData(User $user): array
+function reviewData(User $user, ?string $accountId = null): array
 {
-    return app(ForecastReviewPresenter::class)->present($user, $user->activeSpace()->id);
+    return app(ForecastReviewPresenter::class)->present($user, $user->activeSpace()->id, $accountId);
 }
 
 /**
- * The key of the suggestion named like `$name`.
+ * The key of the yearly suggestion named like `$name`.
  */
-function reviewKey(array $review, string $name, string $step = 'recurring'): string
+function reviewKey(array $review, string $name): string
 {
-    return collect($review[$step])->firstOrFail(fn (array $suggestion): bool => str_contains(strtolower($suggestion['name']), strtolower($name)))['key'];
+    return collect($review['annual'])->firstOrFail(fn (array $suggestion): bool => str_contains(strtolower($suggestion['name']), strtolower($name)))['key'];
 }
 
 /**
@@ -76,16 +78,30 @@ function reviewKey(array $review, string $name, string $step = 'recurring'): str
 function postReview(User $user, array $answers)
 {
     return test()->actingAs($user)->from(route('forecast.index'))->post(route('forecast.review.store'), [
-        'lines' => [],
+        'annual' => [],
         'dismissed' => [],
         'manual' => [],
         ...$answers,
     ]);
 }
 
+/**
+ * The rows of one side of step 1, as [name, amount, basis].
+ *
+ * @return list<array{0: string|null, 1: int, 2: string}>
+ */
+function reviewRows(array $review, string $side): array
+{
+    return array_map(fn (array $row): array => [$row['name'], $row['amount'], $row['basis']], $review['estimates'][$side]);
+}
+
 describe('with the Forecast flag off', function () {
     beforeEach(function () {
         Feature::for($this->user)->deactivate(Forecast::class);
+    });
+
+    it('does not show the review', function () {
+        $this->actingAs($this->user)->get(route('forecast.index'))->assertNotFound();
     });
 
     it('does not take answers', function () {
@@ -94,6 +110,14 @@ describe('with the Forecast flag off', function () {
 
         expect(ForecastItem::query()->count())->toBe(0)
             ->and(ForecastDismissal::query()->count())->toBe(0);
+    });
+
+    it('does not take an edit of step 1', function () {
+        $this->actingAs($this->user)->post(route('forecast.estimates.store'), [
+            'account_id' => $this->checking->id, 'category_id' => $this->salary->id, 'month' => '2026-12', 'amount' => 260000, 'scope' => 'from_here',
+        ])->assertNotFound();
+
+        expect(ForecastEstimateAdjustment::query()->count())->toBe(0);
     });
 
     it('does not count suggestions in the weekly refresh', function () {
@@ -107,55 +131,35 @@ describe('with the Forecast flag off', function () {
 });
 
 describe('the review data', function () {
-    it('is only sent when the page asks for it', function () {
-        $this->actingAs($this->user)->get(route('forecast.index'))
+    it('is only sent when the page asks for it, for the account shown', function () {
+        $this->actingAs($this->user)->get(route('forecast.index', ['account' => $this->savings->id]))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->missing('review')
                 ->missing('newSuggestionCount')
                 ->where('reviewPrompt.hasLines', false)
-                ->loadDeferredProps(fn (AssertableInertia $reload) => $reload->where('newSuggestionCount', 5))
+                ->loadDeferredProps(fn (AssertableInertia $reload) => $reload->where('newSuggestionCount', 1))
                 ->reloadOnly('review', fn (AssertableInertia $reload) => $reload
-                    ->has('review.recurring', 4)
+                    ->where('review.accountId', $this->savings->id)
+                    ->missing('review.recurring')
                     ->has('review.annual', 1)
                     ->has('review.accounts', 2)));
     });
 
-    it('describes each suggestion for the review rows', function () {
-        $review = reviewData($this->user);
-        $salary = collect($review['recurring'])->firstWhere('key', reviewKey($review, 'nomina'));
-
-        expect($salary)->toMatchArray([
-            'kind' => 'recurring',
-            'accountName' => 'Checking',
-            'frequency' => 'monthly',
-            'anchorDay' => 28,
-            'amount' => 250000,
-            'confidence' => 'high',
-            'chargeCount' => 12,
-            'expectedCount' => 12,
-        ]);
+    it('reviews every account in the "All accounts" view', function () {
+        $this->actingAs($this->user)->get(route('forecast.index', ['account' => 'all']))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->reloadOnly('review', fn (AssertableInertia $reload) => $reload->where('review.accountId', null)));
     });
 
     it('shows the charges a yearly suggestion stands on', function () {
         $insurance = reviewData($this->user)['annual'][0];
 
-        expect($insurance['kind'])->toBe('annual')
+        expect($insurance['accountName'])->toBe('Checking')
             ->and($insurance['evidence'])->toBe([
                 ['date' => '2025-06-10', 'amount' => -32000],
                 ['date' => '2026-06-08', 'amount' => -34500],
             ]);
-    });
-
-    it('says how the day-to-day spend is estimated', function () {
-        $groceries = forecastExpenseCategory($this->user, name: 'Groceries');
-        forecastMonthlyCharges($this->checking, '2026-08-05', 3, -120000, fn (int $index): string => "SUPERMARKET {$index}", $groceries);
-
-        $daily = reviewData($this->user)['dailySpend'];
-
-        expect($daily['currencyCode'])->toBe('EUR')
-            ->and($daily['median'])->toBe(['name' => 'Groceries', 'amount' => 120000])
-            ->and($daily['unusableBudgets'])->toBe([]);
     });
 
     it('lists only the accounts the forecast includes', function () {
@@ -166,185 +170,267 @@ describe('the review data', function () {
     });
 });
 
-describe('confirming', function () {
-    it('stores a kept suggestion as a line that is not suggested again', function () {
+describe('step 1: how next month is estimated', function () {
+    it('lists each income category, then each expense, with next month\'s estimate and its basis', function () {
+        $estimates = reviewData($this->user)['estimates'];
+
+        expect($estimates['month'])->toBe('2026-12')
+            ->and($estimates['currencyCode'])->toBe('EUR')
+            ->and($estimates['unusableBudgets'])->toBe([])
+            ->and(reviewRows(['estimates' => $estimates], 'income'))->toBe([['Salary', 250000, 'median']])
+            ->and(reviewRows(['estimates' => $estimates], 'expenses'))->toBe([['Housing', 85000, 'median'], ['Leisure', 6000, 'median']])
+            ->and($estimates['income'][0])->toMatchArray([
+                'accountId' => $this->checking->id,
+                'accountName' => 'Checking',
+                'currencyCode' => 'EUR',
+                'categoryId' => $this->salary->id,
+                'kind' => 'income',
+            ]);
+    });
+
+    it('puts "Other income" and "Other spending" last', function () {
+        forecastMonthlyCharges($this->checking, '2026-08-20', 3, -150000, fn (int $index): string => "CASH {$index}");
+        forecastMonthlyCharges($this->checking, '2026-08-21', 3, 40000, fn (int $index): string => "BIZUM {$index}");
+
         $review = reviewData($this->user);
 
-        postReview($this->user, ['lines' => [['keys' => [reviewKey($review, 'alquiler')], 'name' => 'Rent']]])
+        expect(reviewRows($review, 'expenses'))->toBe([['Housing', 85000, 'median'], ['Leisure', 6000, 'median'], [null, 150000, 'median']])
+            ->and(reviewRows($review, 'income'))->toBe([['Salary', 250000, 'median'], [null, 40000, 'median']])
+            ->and(collect($review['estimates']['expenses'])->last()['categoryId'])->toBeNull();
+    });
+
+    it('lists the usual transfers apart and leaves them out of the totals', function () {
+        $estimates = reviewData($this->user)['estimates'];
+
+        expect($estimates['transfers'])->toHaveCount(1)
+            ->and($estimates['transfers'][0])->toMatchArray([
+                'fromAccountName' => 'Checking',
+                'toAccountName' => 'Savings',
+                'amount' => 50000,
+                'currencyCode' => 'EUR',
+            ])
+            ->and($estimates['totals'])->toBe(['income' => 250000, 'expenses' => 91000, 'net' => 159000]);
+    });
+
+    it('narrows to the account reviewed', function () {
+        $estimates = reviewData($this->user, $this->savings->id)['estimates'];
+
+        expect($estimates['income'])->toBe([])
+            ->and($estimates['expenses'])->toBe([])
+            ->and($estimates['transfers'])->toHaveCount(1)
+            ->and($estimates['totals'])->toBe(['income' => 0, 'expenses' => 0, 'net' => 0]);
+    });
+
+    it('reviews every included account when the one asked for is left out', function () {
+        $loan = Account::factory()->create(['type' => AccountType::Loan, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
+
+        expect(reviewData($this->user, $loan->id)['accountId'])->toBeNull();
+    });
+
+    it('adds the totals up in the user\'s currency', function () {
+        ExchangeRate::factory()->create(['base_currency' => 'eur', 'date' => '2026-11-26', 'rates' => ['eur' => 1.0, 'usd' => 2.0]]);
+        $dollars = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'name' => 'Dollars', 'currency_code' => 'USD']);
+        forecastMonthlyCharges($dollars, '2026-08-10', 3, -20000, 'GROCER', forecastExpenseCategory($this->user, name: 'Groceries'));
+
+        $estimates = reviewData($this->user)['estimates'];
+        $groceries = collect($estimates['expenses'])->firstWhere('name', 'Groceries');
+
+        expect($groceries['amount'])->toBe(20000)
+            ->and($groceries['currencyCode'])->toBe('USD')
+            ->and($estimates['totals']['expenses'])->toBe(91000 + 10000)
+            ->and($estimates['unconvertedCurrencies'])->toBe([]);
+    });
+
+    it('leaves a currency without a rate out of the totals, and says so', function () {
+        Http::fake(['*' => Http::response([], 404)]);
+        $pesos = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'MXN']);
+        forecastMonthlyCharges($pesos, '2026-08-10', 3, -20000, 'GROCER', forecastExpenseCategory($this->user, name: 'Groceries'));
+
+        $estimates = reviewData($this->user)['estimates'];
+
+        expect($estimates['totals']['expenses'])->toBe(91000)
+            ->and($estimates['unconvertedCurrencies'])->toBe(['MXN']);
+    });
+
+    it('shows an edit made in place from next month on, on its side', function () {
+        $this->actingAs($this->user)->from(route('forecast.index'))->post(route('forecast.estimates.store'), [
+            'account_id' => $this->checking->id, 'category_id' => $this->salary->id, 'month' => '2026-12', 'amount' => 260000, 'scope' => 'from_here',
+        ])->assertSessionHasNoErrors();
+
+        $adjustment = ForecastEstimateAdjustment::query()->sole();
+        $review = reviewData($this->user);
+
+        expect($adjustment->kind)->toBe(ForecastEstimateKind::Income)
+            ->and($adjustment->starts_on->toDateString())->toBe('2026-12-01')
+            ->and($adjustment->ends_on)->toBeNull()
+            ->and(reviewRows($review, 'income'))->toBe([['Salary', 260000, 'adjustment']])
+            ->and($review['estimates']['totals']['income'])->toBe(260000);
+    });
+
+    it('shows a user without Pro next month too', function () {
+        $free = User::factory()->onboarded()->paywallSeen()->create(['currency_code' => 'EUR']);
+        Feature::for($free)->activate(Forecast::class);
+        $account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $free->id, 'currency_code' => 'EUR']);
+        forecastMonthlyCharges($account, '2026-08-01', 3, -85000, 'ALQUILER', forecastExpenseCategory($free, name: 'Housing'));
+
+        $estimates = reviewData($free)['estimates'];
+
+        expect($estimates['month'])->toBe('2026-12')
+            ->and(reviewRows(['estimates' => $estimates], 'expenses'))->toBe([['Housing', 85000, 'median']]);
+    });
+
+    it('sends nothing to estimate without an account', function () {
+        $empty = User::factory()->onboarded()->paywallSeen()->create();
+
+        expect(reviewData($empty))->toMatchArray(['estimates' => null, 'uncategorized' => null, 'annual' => [], 'accounts' => []]);
+    });
+});
+
+describe('the uncategorized notice', function () {
+    /**
+     * An account that spent `$categorized` with a category and `$uncategorized`
+     * without one in each of August, September and October.
+     */
+    beforeEach(function () {
+        $this->solo = User::factory()->onboarded()->paywallSeen()->create(['currency_code' => 'EUR']);
+        $this->soloAccount = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->solo->id, 'currency_code' => 'EUR']);
+        $this->spend = function (int $categorized, int $uncategorized): void {
+            $groceries = forecastExpenseCategory($this->solo, name: 'Groceries');
+            forecastMonthlyCharges($this->soloAccount, '2026-08-05', 3, -$categorized, 'SUPERMARKET', $groceries);
+            forecastMonthlyCharges($this->soloAccount, '2026-08-06', 3, -$uncategorized, fn (int $index): string => "SHOP {$index}");
+        };
+    });
+
+    it('is not there for the test account, which has everything categorized', function () {
+        expect(reviewData($this->user)['uncategorized'])->toBeNull();
+    });
+
+    it('says how many transactions have no category and how much a month, above 20 %', function () {
+        ($this->spend)(60000, 30000);
+
+        expect(reviewData($this->solo)['uncategorized'])->toBe([
+            'count' => 3,
+            'monthlyAmount' => 30000,
+            'currencyCode' => 'EUR',
+            'from' => '2026-08-01',
+            'to' => '2026-10-31',
+        ]);
+    });
+
+    it('is not there at exactly 20 %', function () {
+        ($this->spend)(80000, 20000);
+
+        expect(reviewData($this->solo)['uncategorized'])->toBeNull();
+    });
+
+    it('is there just above 20 %', function () {
+        ($this->spend)(80000, 20001);
+
+        expect(reviewData($this->solo)['uncategorized'])->not->toBeNull();
+    });
+
+    it('counts money in as well as money out', function () {
+        ($this->spend)(80000, 0);
+        forecastMonthlyCharges($this->soloAccount, '2026-08-28', 3, 30000, fn (int $index): string => "BIZUM {$index}");
+
+        expect(reviewData($this->solo)['uncategorized']['monthlyAmount'])->toBe(30000);
+    });
+
+    it('leaves transfers between the user\'s own accounts out', function () {
+        ($this->spend)(80000, 10000);
+        $savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->solo->id, 'currency_code' => 'EUR']);
+        forecastMonthlyCharges($this->soloAccount, '2026-08-10', 3, -500000, 'TRASPASO');
+        forecastMonthlyCharges($savings, '2026-08-10', 3, 500000, 'TRASPASO');
+
+        expect(reviewData($this->solo)['uncategorized'])->toBeNull();
+    });
+
+    it('reads only the last three complete months', function () {
+        ($this->spend)(80000, 10000);
+        forecastCharge($this->soloAccount, '2026-11-03', -900000, 'BIG SHOP THIS MONTH');
+        forecastCharge($this->soloAccount, '2026-07-03', -900000, 'BIG SHOP IN JULY');
+
+        expect(reviewData($this->solo)['uncategorized'])->toBeNull();
+    });
+
+    it('reads only the account reviewed', function () {
+        ($this->spend)(80000, 0);
+        $other = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->solo->id, 'currency_code' => 'EUR']);
+        forecastMonthlyCharges($other, '2026-08-06', 3, -50000, fn (int $index): string => "SHOP {$index}");
+
+        expect(reviewData($this->solo, $this->soloAccount->id)['uncategorized'])->toBeNull()
+            ->and(reviewData($this->solo, $other->id)['uncategorized']['count'])->toBe(3)
+            ->and(reviewData($this->solo)['uncategorized']['count'])->toBe(3);
+    });
+
+    it('converts to the user\'s currency', function () {
+        ExchangeRate::factory()->create(['base_currency' => 'eur', 'date' => '2026-11-26', 'rates' => ['eur' => 1.0, 'usd' => 2.0]]);
+        ($this->spend)(80000, 0);
+        $dollars = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->solo->id, 'currency_code' => 'USD']);
+        forecastMonthlyCharges($dollars, '2026-08-06', 3, -60000, fn (int $index): string => "SHOP {$index}");
+
+        expect(reviewData($this->solo)['uncategorized']['monthlyAmount'])->toBe(30000);
+    });
+});
+
+describe('confirming', function () {
+    it('no longer creates a line for what repeats every month', function () {
+        postReview($this->user, [])
             ->assertRedirect(route('forecast.index'))
             ->assertSessionHasNoErrors();
 
-        $rent = ForecastItem::query()->sole();
-
-        expect($rent->name)->toBe('Rent')
-            ->and($rent->account_id)->toBe($this->checking->id)
-            ->and($rent->category_id)->toBe($this->housing->id)
-            ->and($rent->kind)->toBe(ForecastItemKind::Recurring)
-            ->and($rent->frequency)->toBe(ForecastFrequency::Monthly)
-            ->and($rent->source)->toBe(ForecastItemSource::Detected)
-            ->and($rent->fingerprint)->toBe('alquiler piso centro')
-            ->and($rent->anchor_date->toDateString())->toBe('2025-12-01')
-            ->and($rent->versions()->sole()->amount)->toBe(-85000)
-            ->and($rent->match_rules_json)->toBe(['and' => [
-                ['in' => ['alquiler', ['var' => 'description']]],
-                ['in' => ['piso', ['var' => 'description']]],
-                ['in' => ['centro', ['var' => 'description']]],
-            ]]);
-
-        $remaining = collect(app(ForecastSuggestions::class)->for($this->user, $this->spaceId)['recurring'])->pluck('name');
-        expect($remaining)->not->toContain('ALQUILER PISO CENTRO');
+        expect(ForecastItem::query()->count())->toBe(0)
+            ->and(ForecastItem::query()->where('source', ForecastItemSource::Detected)->exists())->toBeFalse();
     });
 
-    it('pairs the charges the line was built from with its occurrences', function () {
-        postReview($this->user, ['lines' => [['keys' => [reviewKey(reviewData($this->user), 'alquiler')]]]]);
+    it('refuses the old step 1 answers', function () {
+        postReview($this->user, ['lines' => [['keys' => ["recurring|{$this->checking->id}|alquiler piso centro"]]]])
+            ->assertSessionHasNoErrors();
 
-        $matches = ForecastMatch::query()->orderBy('occurrence_date')->get();
-
-        expect($matches)->toHaveCount(12)
-            ->and($matches->pluck('transaction_id')->all())->toEqualCanonicalizing(collect($this->rent)->pluck('id')->all())
-            ->and($matches->first()->occurrence_date->toDateString())->toBe('2025-12-01')
-            ->and($matches->last()->occurrence_date->toDateString())->toBe('2026-11-01')
-            ->and($matches->every(fn (ForecastMatch $match): bool => $match->matched_by === ForecastMatchedBy::User && $match->deviation === 0))->toBeTrue();
+        expect(ForecastItem::query()->count())->toBe(0);
     });
 
-    it('keeps the category estimate once a charge is confirmed: a detected line no longer projects', function () {
-        $housingEstimate = fn (): int => collect(app(ForecastPlanBuilder::class)->build($this->user, $this->spaceId, null, 2)->categoryEstimates)
-            ->where('categoryId', $this->housing->id)
-            ->where('month', '2026-12')
-            ->sum('amount');
+    it('adds a yearly suggestion that projects, and pairs its charges', function () {
+        postReview($this->user, ['annual' => [reviewKey(reviewData($this->user), 'mapfre')]])
+            ->assertSessionHasNoErrors();
 
-        expect($housingEstimate())->toBe(85000);
+        $insurance = ForecastItem::query()->sole();
+        $plan = app(ForecastPlanBuilder::class)->build($this->user, $this->spaceId);
 
-        postReview($this->user, ['lines' => [['keys' => [reviewKey(reviewData($this->user), 'alquiler')]]]]);
-
-        $plan = app(ForecastPlanBuilder::class)->build($this->user, $this->spaceId, null, 2);
-        $rentInDecember = collect($plan->input->occurrences)->filter(fn ($occurrence): bool => str_starts_with($occurrence->date, '2026-12'))->sum('amount');
-
-        expect($housingEstimate())->toBe(85000)
-            ->and($rentInDecember)->toBe(0);
+        expect($insurance->frequency)->toBe(ForecastFrequency::Yearly)
+            ->and($insurance->source)->toBe(ForecastItemSource::Manual)
+            ->and($insurance->anchor_date->toDateString())->toBe('2025-06-09')
+            ->and($insurance->matches()->count())->toBe(2)
+            ->and(collect($plan->input->occurrences)->where('itemId', $insurance->id)->pluck('date')->all())->toBe(['2027-06-09']);
     });
 
-    it('recognises the next charge by its description', function () {
-        postReview($this->user, ['lines' => [['keys' => [reviewKey(reviewData($this->user), 'alquiler')]]]]);
+    it('dismisses the yearly suggestions left out, which do not come back', function () {
+        postReview($this->user, ['dismissed' => [reviewKey(reviewData($this->user), 'mapfre'), 'annual|x|unknown']])
+            ->assertSessionHasNoErrors();
 
-        $this->travelTo('2026-12-01 10:00:00');
-        $december = forecastCharge($this->checking, '2026-12-01', -85000, 'Alquiler piso centro DIC', $this->housing);
-        $other = forecastCharge($this->checking, '2026-12-01', -85000, 'TRANSFER TO JOHN');
-
-        expect(app(ForecastMatcher::class)->match($december)?->occurrence_date->toDateString())->toBe('2026-12-01')
-            ->and(app(ForecastMatcher::class)->match($other))->toBeNull();
+        expect(ForecastDismissal::query()->sole())
+            ->fingerprint->toBe('mapfre seguro hogar poliza')
+            ->kind->toBe(ForecastSuggestionKind::Annual)
+            ->and(reviewData($this->user)['annual'])->toBe([]);
     });
 
-    it('merges several suggestions into one line', function () {
-        $review = reviewData($this->user);
-        $netflix = reviewKey($review, 'netflix');
-        $hbo = reviewKey($review, 'hbo');
-
-        postReview($this->user, ['lines' => [['keys' => [$hbo, $netflix], 'name' => 'Streaming']]])->assertSessionHasNoErrors();
-
-        $line = ForecastItem::query()->sole();
-
-        expect($line->name)->toBe('Streaming')
-            ->and($line->fingerprint)->toBe('netflix com')
-            ->and($line->versions()->sole()->amount)->toBe(-2298)
-            ->and($line->match_rules_json)->toHaveKey('or')
-            ->and(ForecastMatch::query()->where('forecast_item_id', $line->id)->count())->toBe(24)
-            ->and(ForecastDismissal::query()->sole()->fingerprint)->toBe('hbo max');
-
-        $remaining = collect(app(ForecastSuggestions::class)->for($this->user, $this->spaceId)['recurring'])->pluck('name')->all();
-        expect($remaining)->toBe(['NOMINA ACME SL', 'ALQUILER PISO CENTRO']);
-    });
-
-    it('matches each payment of a merged line to the same occurrence', function () {
-        $review = reviewData($this->user);
-        postReview($this->user, ['lines' => [['keys' => [reviewKey($review, 'netflix'), reviewKey($review, 'hbo')], 'name' => 'Streaming']]]);
-        $line = ForecastItem::query()->sole();
-
-        $this->travelTo('2026-12-16 10:00:00');
-        $netflix = forecastCharge($this->checking, '2026-12-15', -1399, 'NETFLIX COM', $this->leisure);
-        $hbo = forecastCharge($this->checking, '2026-12-16', -999, 'HBO MAX', $this->leisure);
-        $matcher = app(ForecastMatcher::class);
-
-        expect($matcher->match($netflix)?->forecast_item_id)->toBe($line->id)
-            ->and(app(ForecastMatcher::class)->match($hbo)?->forecast_item_id)->toBe($line->id)
-            ->and(ForecastMatch::query()->whereIn('transaction_id', [$netflix->id, $hbo->id])->pluck('occurrence_date')->map->toDateString()->unique()->all())->toBe(['2026-12-15']);
-    });
-
-    it('refuses to merge suggestions on different days', function () {
-        $review = reviewData($this->user);
-
-        postReview($this->user, ['lines' => [['keys' => [reviewKey($review, 'alquiler'), reviewKey($review, 'netflix')]]]])
-            ->assertSessionHasErrors('lines');
+    it('refuses a suggestion that is not on offer', function () {
+        postReview($this->user, ['annual' => ["annual|{$this->checking->id}|made up"]])
+            ->assertSessionHasErrors('annual');
 
         expect(ForecastItem::query()->count())->toBe(0);
     });
 
     it('stores the answers once when they are sent twice', function () {
-        $answers = ['lines' => [['keys' => [reviewKey(reviewData($this->user), 'alquiler')]]]];
+        $answers = ['annual' => [reviewKey(reviewData($this->user), 'mapfre')]];
 
         postReview($this->user, $answers)->assertSessionHasNoErrors();
-        postReview($this->user, $answers)->assertSessionHasErrors('lines');
+        postReview($this->user, $answers)->assertSessionHasErrors('annual');
 
-        expect(ForecastItem::query()->count())->toBe(1)
-            ->and(ForecastMatch::query()->count())->toBe(12);
-    });
-
-    it('refuses to merge suggestions of different directions', function () {
-        $review = reviewData($this->user);
-
-        postReview($this->user, ['lines' => [['keys' => [reviewKey($review, 'nomina'), reviewKey($review, 'alquiler')]]]])
-            ->assertSessionHasErrors('lines');
-
-        expect(ForecastItem::query()->count())->toBe(0);
-    });
-
-    it('refuses a suggestion that is not on offer', function () {
-        postReview($this->user, ['lines' => [['keys' => ["recurring|{$this->checking->id}|made up"]]]])
-            ->assertSessionHasErrors('lines');
-
-        expect(ForecastItem::query()->count())->toBe(0);
-    });
-
-    it('refuses a suggestion in two lines', function () {
-        $key = reviewKey(reviewData($this->user), 'alquiler');
-
-        postReview($this->user, ['lines' => [['keys' => [$key]], ['keys' => [$key]]]])
-            ->assertSessionHasErrors('lines.0.keys.0');
-    });
-
-    it('dismisses the suggestions left out, which do not come back', function () {
-        $review = reviewData($this->user);
-
-        postReview($this->user, [
-            'lines' => [['keys' => [reviewKey($review, 'nomina')]]],
-            'dismissed' => [reviewKey($review, 'netflix'), reviewKey($review, 'hbo'), reviewKey($review, 'mapfre', 'annual'), 'recurring|x|unknown'],
-        ])->assertSessionHasNoErrors();
-
-        expect(ForecastDismissal::query()->orderBy('fingerprint')->get(['fingerprint', 'kind'])->map(fn ($dismissal): array => [$dismissal->fingerprint, $dismissal->kind])->all())->toBe([
-            ['hbo max', ForecastSuggestionKind::Recurring],
-            ['mapfre seguro hogar poliza', ForecastSuggestionKind::Annual],
-            ['netflix com', ForecastSuggestionKind::Recurring],
-        ]);
-
-        $remaining = reviewData($this->user);
-        expect(collect($remaining['recurring'])->pluck('name')->all())->toBe(['ALQUILER PISO CENTRO'])
-            ->and($remaining['annual'])->toBe([]);
-    });
-
-    it('adds a yearly suggestion and pairs its charges', function () {
-        postReview($this->user, ['lines' => [['keys' => [reviewKey(reviewData($this->user), 'mapfre', 'annual')], 'name' => 'Home insurance']]])
-            ->assertSessionHasNoErrors();
-
-        $insurance = ForecastItem::query()->sole();
-
-        expect($insurance->frequency)->toBe(ForecastFrequency::Yearly)
-            ->and($insurance->anchor_date->toDateString())->toBe('2025-06-09')
-            ->and($insurance->matches()->count())->toBe(2);
+        expect(ForecastItem::query()->count())->toBe(1);
     });
 
     it('adds the yearly and one-off payments typed in', function () {
-        $this->travelTo('2026-11-26 12:00:00');
-
         postReview($this->user, ['manual' => [
             ['name' => 'IBI', 'amount' => -48000, 'month' => 4, 'accountId' => $this->checking->id, 'frequency' => 'yearly'],
             ['name' => 'Extra pay', 'amount' => 150000, 'month' => 12, 'accountId' => $this->checking->id, 'frequency' => 'yearly'],
@@ -391,71 +477,42 @@ describe('confirming', function () {
         $free = User::factory()->onboarded()->paywallSeen()->create(['currency_code' => 'EUR']);
         Feature::for($free)->activate(Forecast::class);
         $account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $free->id, 'currency_code' => 'EUR']);
-        forecastMonthlyCharges($account, '2025-12-01', 12, -85000, 'ALQUILER PISO CENTRO');
 
         postReview($free, [
-            'lines' => [['keys' => [reviewKey(reviewData($free), 'alquiler')]]],
             'manual' => [['name' => 'IBI', 'amount' => -48000, 'month' => 4, 'accountId' => $account->id, 'frequency' => 'yearly']],
         ])->assertSessionHasNoErrors();
 
-        expect(ForecastItem::query()->where('user_id', $free->id)->count())->toBe(2);
+        expect(ForecastItem::query()->where('user_id', $free->id)->count())->toBe(1);
     });
 
     it('does not touch another user\'s suggestions', function () {
         $other = User::factory()->onboarded()->paywallSeen()->create();
         Feature::for($other)->activate(Forecast::class);
 
-        postReview($other, ['lines' => [['keys' => [reviewKey(reviewData($this->user), 'alquiler')]]]])
-            ->assertSessionHasErrors('lines');
+        postReview($other, ['annual' => [reviewKey(reviewData($this->user), 'mapfre')]])
+            ->assertSessionHasErrors('annual');
 
         expect(ForecastItem::query()->count())->toBe(0);
-    });
-
-    it('stores a one-sided transfer going where the user says', function () {
-        $transfers = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Transfer]);
-        forecastMonthlyCharges($this->checking, '2025-12-03', 12, -20000, 'TRASPASO A BROKER', $transfers);
-        $review = reviewData($this->user);
-        $transfer = collect($review['recurring'])->firstWhere('kind', 'transfer');
-
-        expect($transfer['destinationUnknown'])->toBeTrue();
-
-        postReview($this->user, ['lines' => [
-            ['keys' => [$transfer['key']], 'destinationAccountId' => $this->savings->id],
-        ]])->assertSessionHasNoErrors();
-
-        expect(ForecastItem::query()->sole()->destination_account_id)->toBe($this->savings->id);
-    });
-
-    it('stores a one-sided transfer as leaving the app by default', function () {
-        $transfers = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Transfer]);
-        forecastMonthlyCharges($this->checking, '2025-12-03', 12, -20000, 'TRASPASO A BROKER', $transfers);
-        $transfer = collect(reviewData($this->user)['recurring'])->firstWhere('kind', 'transfer');
-
-        postReview($this->user, ['lines' => [['keys' => [$transfer['key']]]]])->assertSessionHasNoErrors();
-
-        $line = ForecastItem::query()->sole();
-        expect($line->destination_account_id)->toBeNull()
-            ->and($line->destination_external)->toBeTrue();
     });
 });
 
 describe('the count of new suggestions', function () {
-    it('is forgotten once the review is answered', function () {
-        expect(app(ForecastSuggestionCount::class)->for($this->user, $this->spaceId))->toBe(5);
+    it('counts the yearly ones only, and is forgotten once the review is answered', function () {
+        expect(app(ForecastSuggestionCount::class)->for($this->user, $this->spaceId))->toBe(1);
 
-        postReview($this->user, ['lines' => [['keys' => [reviewKey(reviewData($this->user), 'alquiler')]]]]);
+        postReview($this->user, ['annual' => [reviewKey(reviewData($this->user), 'mapfre')]]);
 
-        expect(app(ForecastSuggestionCount::class)->for($this->user, $this->spaceId))->toBe(4);
+        expect(app(ForecastSuggestionCount::class)->for($this->user, $this->spaceId))->toBe(0);
     });
 
     it('is worked out again in the weekly refresh', function () {
-        expect(app(ForecastSuggestionCount::class)->for($this->user, $this->spaceId))->toBe(5);
-        Transaction::query()->where('description', 'HBO MAX')->delete();
+        expect(app(ForecastSuggestionCount::class)->for($this->user, $this->spaceId))->toBe(1);
+        Transaction::query()->where('description', 'MAPFRE SEGURO HOGAR POLIZA')->delete();
 
         $this->user->update(['timezone' => 'UTC']);
         $this->travelTo('2026-11-30 06:10:00');
         $this->artisan('forecast:refresh')->assertSuccessful();
 
-        expect(Cache::get("forecast:new-suggestions:{$this->user->id}:{$this->spaceId}"))->toBe(4);
+        expect(Cache::get("forecast:new-suggestions:{$this->user->id}:{$this->spaceId}"))->toBe(0);
     });
 });

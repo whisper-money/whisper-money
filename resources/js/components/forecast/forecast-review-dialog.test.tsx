@@ -1,15 +1,21 @@
 import {
     type ForecastAnnualSuggestion,
     type ForecastReview,
-    type ForecastSuggestion,
+    type ForecastReviewEstimate,
 } from '@/types/forecast';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForecastReviewDialog } from './forecast-review-dialog';
 
 const router = vi.hoisted(() => ({ reload: vi.fn(), post: vi.fn() }));
 
-vi.mock('@inertiajs/react', () => ({ router }));
+vi.mock('@inertiajs/react', () => ({
+    router,
+    Link: ({ href, children }: { href: string; children: ReactNode }) => (
+        <a href={href}>{children}</a>
+    ),
+}));
 
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 
@@ -24,6 +30,7 @@ vi.mock('@/components/ui/amount-display', () => ({
 vi.mock('@/hooks/use-format-amount', () => ({
     useFormatAmount: () => ({
         formatAmount: (amount: number) => `€${amount / 100}`,
+        formatAmountNumber: (amount: number) => `${amount / 100}`,
     }),
 }));
 
@@ -42,86 +49,90 @@ vi.mock('@/components/ui/amount-input', () => ({
     ),
 }));
 
-function suggestion(
-    overrides: Partial<ForecastSuggestion> & Pick<ForecastSuggestion, 'key'>,
-): ForecastSuggestion {
-    return {
-        kind: 'recurring',
-        mergeable: true,
-        name: overrides.key,
-        accountId: 'checking',
-        accountName: 'Checking',
-        destinationAccountId: null,
-        destinationAccountName: null,
-        destinationUnknown: false,
-        currencyCode: 'EUR',
-        frequency: 'monthly',
-        anchorDay: 1,
-        nextDate: '2026-12-01',
-        amount: -10000,
-        amountTolerance: 1000,
-        confidence: 'high',
-        chargeCount: 12,
-        expectedCount: 12,
-        ...overrides,
-    };
-}
-
 const insurance: ForecastAnnualSuggestion = {
-    ...suggestion({
-        key: 'annual|checking|car insurance',
-        kind: 'annual',
-        name: 'Car insurance',
-        frequency: 'yearly',
-        nextDate: '2027-04-10',
-        amount: -64000,
-        confidence: 'review',
-        chargeCount: 2,
-        expectedCount: 2,
-    }),
+    key: 'annual|checking|car insurance',
+    name: 'Car insurance',
+    accountId: 'checking',
+    accountName: 'Checking',
+    currencyCode: 'EUR',
+    nextDate: '2027-04-10',
+    amount: -64000,
     evidence: [
         { date: '2025-04-12', amount: -61200 },
         { date: '2026-04-10', amount: -64000 },
     ],
 };
 
+function estimate(
+    overrides: Partial<ForecastReviewEstimate>,
+): ForecastReviewEstimate {
+    return {
+        accountId: 'checking',
+        accountName: 'Checking',
+        currencyCode: 'EUR',
+        categoryId: 'groceries',
+        name: 'Groceries',
+        kind: 'expense',
+        amount: 40000,
+        basis: 'median',
+        budgetAmount: null,
+        ...overrides,
+    };
+}
+
 const review: ForecastReview = {
-    recurring: [
-        suggestion({
-            key: 'salary',
-            name: 'NOMINA ACME',
-            amount: 245000,
-            anchorDay: 28,
-        }),
-        suggestion({ key: 'rent', name: 'ALQUILER', amount: -85000 }),
-        suggestion({
-            key: 'gym',
-            name: 'GYM',
-            amount: -3900,
-            confidence: 'review',
-            chargeCount: 4,
-            expectedCount: 6,
-        }),
-        suggestion({
-            key: 'savings',
-            kind: 'transfer',
-            name: 'TRASPASO',
-            amount: -50000,
-            destinationAccountId: 'savings',
-            destinationAccountName: 'Savings',
-        }),
-    ],
+    accountId: 'checking',
+    uncategorized: null,
+    estimates: {
+        month: '2026-12',
+        currencyCode: 'EUR',
+        income: [
+            estimate({
+                categoryId: 'salary',
+                name: 'Salary',
+                kind: 'income',
+                amount: 250000,
+            }),
+            estimate({
+                categoryId: null,
+                name: null,
+                kind: 'income',
+                amount: 10000,
+            }),
+        ],
+        expenses: [
+            estimate({
+                categoryId: 'housing',
+                name: 'Housing',
+                amount: 85000,
+            }),
+            estimate({
+                categoryId: 'leisure',
+                name: 'Leisure',
+                amount: 30000,
+                basis: 'budget',
+                budgetAmount: 30000,
+            }),
+            estimate({ categoryId: null, name: null, amount: 12000 }),
+        ],
+        transfers: [
+            {
+                key: 'transfer-estimate:checking:savings',
+                fromAccountName: 'Checking',
+                toAccountName: 'Savings',
+                amount: 50000,
+                currencyCode: 'EUR',
+            },
+        ],
+        totals: { income: 260000, expenses: 127000, net: 133000 },
+        unconvertedCurrencies: [],
+        unusableBudgets: [],
+    },
     annual: [insurance],
     accounts: [
         { id: 'checking', name: 'Checking', currencyCode: 'EUR' },
         { id: 'savings', name: 'Savings', currencyCode: 'EUR' },
     ],
-    dailySpend: {
-        currencyCode: 'EUR',
-        budgets: [{ name: 'Groceries', amount: 38000 }],
-        median: { name: 'Transport', amount: 17000 },
-        unusableBudgets: ['Holidays'],
-    },
 };
 
 function renderDialog(
@@ -145,12 +156,16 @@ function renderDialog(
     return { onOpenChange, onSaved };
 }
 
-function rows(): HTMLElement[] {
+function rowNames(section: 'income' | 'expenses'): string[] {
+    const element = document.querySelector(
+        `[data-test="forecast-review-section-${section}"]`,
+    ) as HTMLElement;
+
     return Array.from(
-        document.querySelectorAll<HTMLElement>(
-            '[data-test="forecast-review-row"]',
+        element.querySelectorAll<HTMLElement>(
+            '[data-test="forecast-review-estimate"]',
         ),
-    );
+    ).map((row) => row.querySelector('.font-medium')?.textContent ?? '');
 }
 
 function postedAnswers(): Record<string, unknown> {
@@ -158,93 +173,273 @@ function postedAnswers(): Record<string, unknown> {
 }
 
 beforeEach(() => {
-    router.post.mockClear();
+    router.post.mockReset();
     router.reload.mockClear();
 });
 
+describe('the uncategorized notice', () => {
+    const withNotice: ForecastReview = {
+        ...review,
+        uncategorized: {
+            count: 14,
+            monthlyAmount: 32000,
+            currencyCode: 'EUR',
+            from: '2026-08-01',
+            to: '2026-10-31',
+        },
+    };
+
+    it('comes before step 1, with a link to those transactions', () => {
+        renderDialog({ review: withNotice });
+
+        expect(
+            screen.getByText(
+                'You have 14 uncategorized transactions (€320/month).',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('This is how we have estimated your month'),
+        ).not.toBeInTheDocument();
+
+        const link = screen.getByRole('link', { name: 'Categorize them' });
+        const url = new URL(link.getAttribute('href') ?? '', 'https://x.test');
+        expect(url.pathname).toBe('/transactions');
+        expect(Object.fromEntries(url.searchParams)).toEqual({
+            category_ids: 'uncategorized',
+            date_from: '2026-08-01',
+            date_to: '2026-10-31',
+            account_ids: 'checking',
+        });
+    });
+
+    it('filters to every account reviewed in the "All accounts" view', () => {
+        renderDialog({ review: { ...withNotice, accountId: null } });
+
+        const link = screen.getByRole('link', { name: 'Categorize them' });
+        expect(
+            new URL(
+                link.getAttribute('href') ?? '',
+                'https://x.test',
+            ).searchParams.get('account_ids'),
+        ).toBe('checking,savings');
+    });
+
+    it('goes on to step 1 with "Continue anyway"', () => {
+        renderDialog({ review: withNotice });
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Continue anyway' }),
+        );
+
+        expect(
+            screen.getByText('This is how we have estimated your month'),
+        ).toBeInTheDocument();
+    });
+
+    it('is not shown again on the way back from step 2', () => {
+        renderDialog({ review: withNotice });
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Continue anyway' }),
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Next: yearly payments' }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+        expect(
+            screen.getByText('This is how we have estimated your month'),
+        ).toBeInTheDocument();
+    });
+
+    it('is skipped when the review opens on the yearly payments', () => {
+        renderDialog({ review: withNotice, initialStep: 2 });
+
+        expect(
+            screen.getByText('What do you pay once or twice a year?'),
+        ).toBeInTheDocument();
+    });
+
+    it('closes without saving on "Not now"', () => {
+        const { onOpenChange } = renderDialog({ review: withNotice });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+});
+
 describe('step 1 of the review', () => {
-    it('groups the suggestions and ticks only the sure ones', () => {
+    it('lists income, then expenses, "Other" last in each', () => {
         renderDialog();
 
         expect(
-            screen.getByText('We found 4 movements that repeat'),
+            screen.getByText('This is how we have estimated your month'),
         ).toBeInTheDocument();
+        expect(rowNames('income')).toEqual(['Salary', 'Other income']);
+        expect(rowNames('expenses')).toEqual([
+            'Housing',
+            'Leisure',
+            'Other spending',
+        ]);
+    });
 
-        const income = document.querySelector(
-            '[data-test="forecast-review-section-income"]',
-        ) as HTMLElement;
-        const expenses = document.querySelector(
-            '[data-test="forecast-review-section-expenses"]',
-        ) as HTMLElement;
+    it('says where each figure comes from and its likely range', () => {
+        renderDialog();
+
+        const rows = document.querySelectorAll<HTMLElement>(
+            '[data-test="forecast-review-estimate"]',
+        );
+
+        expect(rows[0]).toHaveTextContent('Median of 3 months · Likely ± 250');
+        expect(rows[3]).toHaveTextContent('Budget 300 · Likely ± 120');
+    });
+
+    it("names each row's account when several are reviewed", () => {
+        renderDialog({ review: { ...review, accountId: null } });
+
+        expect(
+            document.querySelector('[data-test="forecast-review-estimate"]'),
+        ).toHaveTextContent('Median of 3 months · Checking · Likely ± 250');
+    });
+
+    it('shows the usual transfers apart', () => {
+        renderDialog();
+
         const transfers = document.querySelector(
             '[data-test="forecast-review-section-transfers"]',
         ) as HTMLElement;
-
-        expect(within(income).getByText('Income')).toBeInTheDocument();
-        expect(within(income).getByText('NOMINA ACME')).toBeInTheDocument();
-        expect(within(expenses).getByText('ALQUILER')).toBeInTheDocument();
-        expect(within(expenses).getByText('GYM')).toBeInTheDocument();
-        expect(
-            within(transfers).getByText('Transfers between your accounts'),
-        ).toBeInTheDocument();
-        expect(
-            within(income).getByText(
-                'Monthly · day 28 · Checking · 12 of 12 months',
-            ),
-        ).toBeInTheDocument();
-        expect(
-            within(transfers).getByText(
-                'Monthly · day 1 · Checking → Savings · 12 of 12 months',
-            ),
-        ).toBeInTheDocument();
-
-        const gym = rows()[2];
-        expect(within(gym).getByText('Review')).toBeInTheDocument();
-        expect(within(gym).getByRole('checkbox')).not.toBeChecked();
-        expect(within(rows()[0]).getByText('Sure')).toBeInTheDocument();
-        expect(within(rows()[0]).getByRole('checkbox')).toBeChecked();
-
-        expect(
-            document.querySelector('[data-test="forecast-review-selected"]'),
-        ).toHaveTextContent('3 of 4 selected');
+        expect(transfers).toHaveTextContent('Checking → Savings');
+        expect(transfers).toHaveTextContent('50000');
     });
 
-    it('explains how the day-to-day spend is estimated', () => {
+    it('adds up income, expenses and the net per month', () => {
         renderDialog();
 
-        const box = document.querySelector(
-            '[data-test="forecast-review-daily"]',
+        const totals = document.querySelector(
+            '[data-test="forecast-review-totals"]',
         ) as HTMLElement;
-
-        expect(box).toHaveTextContent(
-            'We will use your budgets: Groceries €380.',
-        );
-        expect(box).toHaveTextContent('(Transport ≈ €170)');
-        expect(box).toHaveTextContent('We cannot use Holidays');
+        expect(totals).toHaveTextContent('Income260000');
+        expect(totals).toHaveTextContent('Expenses-127000');
+        expect(totals).toHaveTextContent('Net per month133000');
     });
 
-    it('updates the count as rows are ticked', () => {
-        renderDialog();
+    it('names the budgets it could not use', () => {
+        renderDialog({
+            review: {
+                ...review,
+                estimates: {
+                    ...review.estimates!,
+                    unusableBudgets: ['Holidays'],
+                },
+            },
+        });
 
-        fireEvent.click(within(rows()[2]).getByRole('checkbox'));
-
-        expect(
-            document.querySelector('[data-test="forecast-review-selected"]'),
-        ).toHaveTextContent('4 of 4 selected');
+        expect(screen.getByText(/We cannot use Holidays/)).toBeInTheDocument();
     });
 
-    it('renames a row in place', () => {
-        renderDialog();
-
-        fireEvent.click(screen.getByRole('button', { name: 'ALQUILER' }));
-        const input = screen.getByRole('textbox', { name: 'Name' });
-        fireEvent.change(input, { target: { value: 'Rent' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-        fireEvent.blur(input);
+    it('says when there is nothing to estimate yet', () => {
+        renderDialog({ review: { ...review, estimates: null } });
 
         expect(
-            screen.getByRole('button', { name: 'Rent' }),
+            screen.getByText(/There is not enough history yet/),
         ).toBeInTheDocument();
+    });
+
+    it('changes a figure in place, from next month on', () => {
+        renderDialog();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Change Salary' }));
+        fireEvent.change(screen.getByLabelText('New figure for Salary'), {
+            target: { value: '260000' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(router.post).toHaveBeenCalledTimes(1);
+        const [url, data, options] = router.post.mock.calls[0];
+        expect(url).toBe('/forecast/estimates');
+        expect(data).toEqual({
+            account_id: 'checking',
+            category_id: 'salary',
+            kind: 'income',
+            month: '2026-12',
+            amount: 260000,
+            scope: 'from_here',
+        });
+        expect(options.only).toEqual(['review', 'forecast', 'projectionInput']);
+    });
+
+    it('changes "Other spending" on its side', () => {
+        renderDialog();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Change Other spending' }),
+        );
+        fireEvent.change(
+            screen.getByLabelText('New figure for Other spending'),
+            { target: { value: '15000' } },
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(router.post.mock.calls[0][1]).toMatchObject({
+            category_id: null,
+            kind: 'expense',
+            amount: 15000,
+        });
+    });
+
+    it('closes the editor once saved, and shows why when it is not', () => {
+        router.post.mockImplementationOnce(
+            (
+                _url: string,
+                _data: unknown,
+                options: {
+                    onError: (errors: Record<string, string>) => void;
+                    onFinish: () => void;
+                },
+            ) => {
+                options.onError({
+                    month: 'This month can no longer be changed.',
+                });
+                options.onFinish();
+            },
+        );
+        renderDialog();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Change Housing' }));
+        fireEvent.change(screen.getByLabelText('New figure for Housing'), {
+            target: { value: '90000' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'This month can no longer be changed.',
+        );
+
+        router.post.mockImplementationOnce(
+            (
+                _url: string,
+                _data: unknown,
+                options: { onSuccess: () => void },
+            ) => options.onSuccess(),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(
+            screen.queryByLabelText('New figure for Housing'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('sends nothing when the figure did not change', () => {
+        renderDialog();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Change Housing' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(router.post).not.toHaveBeenCalled();
+        expect(
+            screen.queryByLabelText('New figure for Housing'),
+        ).not.toBeInTheDocument();
     });
 
     it('closes without saving on "Not now"', () => {
@@ -260,7 +455,6 @@ describe('step 1 of the review', () => {
         renderDialog({ review: undefined });
 
         expect(router.reload).toHaveBeenCalledWith({ only: ['review'] });
-        expect(screen.queryByText('Not now')).toBeNull();
     });
 });
 
@@ -317,7 +511,7 @@ describe('step 2 of the review', () => {
         ).toHaveLength(0);
     });
 
-    it('sends what was kept, what was left out and what was typed in', () => {
+    it('sends the yearly suggestions added and the payments typed in', () => {
         renderDialog();
         goToStep2();
 
@@ -344,29 +538,8 @@ describe('step 2 of the review', () => {
 
         expect(router.post).toHaveBeenCalledTimes(1);
         expect(postedAnswers()).toEqual({
-            lines: [
-                {
-                    keys: ['salary'],
-                    name: 'NOMINA ACME',
-                    destinationAccountId: null,
-                },
-                {
-                    keys: ['rent'],
-                    name: 'ALQUILER',
-                    destinationAccountId: null,
-                },
-                {
-                    keys: ['savings'],
-                    name: 'TRASPASO',
-                    destinationAccountId: null,
-                },
-                {
-                    keys: ['annual|checking|car insurance'],
-                    name: 'Car insurance',
-                    destinationAccountId: null,
-                },
-            ],
-            dismissed: ['gym'],
+            annual: ['annual|checking|car insurance'],
+            dismissed: [],
             manual: [
                 {
                     name: 'Property tax (IBI)',
@@ -392,19 +565,8 @@ describe('step 2 of the review', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'I have no more' }));
 
-        expect(postedAnswers().dismissed).toEqual([
-            'gym',
-            'annual|checking|car insurance',
-        ]);
-    });
-
-    it('leaves the recurring ones alone when opened on the yearly payments', () => {
-        renderDialog({ initialStep: 2 });
-
-        fireEvent.click(screen.getByRole('button', { name: 'I have no more' }));
-
         expect(postedAnswers()).toEqual({
-            lines: [],
+            annual: [],
             dismissed: ['annual|checking|car insurance'],
             manual: [],
         });
@@ -417,7 +579,7 @@ describe('step 2 of the review', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
         expect(
-            screen.getByText('We found 4 movements that repeat'),
+            screen.getByText('This is how we have estimated your month'),
         ).toBeInTheDocument();
     });
 
@@ -462,7 +624,6 @@ describe('step 2 of the review', () => {
 
         expect(onSaved).toHaveBeenCalled();
         expect(onOpenChange).not.toHaveBeenCalled();
-        router.post.mockReset();
     });
 
     it('shows why the answers could not be saved', () => {
@@ -473,7 +634,7 @@ describe('step 2 of the review', () => {
                 options: { onError: (errors: Record<string, string>) => void },
             ) =>
                 options.onError({
-                    lines: 'Some suggestions changed since you opened the review. Open it again to see them.',
+                    annual: 'Some suggestions changed since you opened the review. Open it again to see them.',
                 }),
         );
         renderDialog();
@@ -491,6 +652,5 @@ describe('step 2 of the review', () => {
             screen.getByRole('button', { name: 'Load them again' }),
         );
         expect(router.reload).toHaveBeenCalledWith({ only: ['review'] });
-        router.post.mockReset();
     });
 });
