@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\User;
 use App\Services\Forecast\Backtest\BacktestCohort;
 use App\Services\Forecast\Backtest\BacktestReport;
 use App\Services\Forecast\Backtest\BacktestSeries;
@@ -71,7 +72,7 @@ class ForecastBacktest extends Command
         $failures = [];
         $spaces = 0;
 
-        foreach ($cohort->users as $user) {
+        $this->withProgressBar($cohort->users, function (User $user) use ($accounts, $backtester, $report, $cutoffs, $actualsEnd, &$failures, &$spaces): void {
             foreach ($accounts->spaceIds($user) as $spaceId) {
                 $spaces++;
 
@@ -83,7 +84,8 @@ class ForecastBacktest extends Command
                     $failures[$exception::class] = ($failures[$exception::class] ?? 0) + 1;
                 }
             }
-        }
+        });
+        $this->newLine();
 
         $this->info('Spaces measured: '.($spaces - array_sum($failures))." of {$spaces}");
         $this->printReport($report, max((int) $this->option('min-count'), 1));

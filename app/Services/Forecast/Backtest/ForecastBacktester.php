@@ -48,7 +48,7 @@ class ForecastBacktester
      *
      * @var list<int>
      */
-    public const HORIZONS = [1, 3, 6];
+    private const HORIZONS = [1, 3, 6];
 
     /**
      * Months the net-flow baseline averages.
