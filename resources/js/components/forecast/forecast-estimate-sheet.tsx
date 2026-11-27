@@ -15,23 +15,25 @@ import { useLocale } from '@/hooks/use-locale';
 import {
     accountMonths,
     estimateDeltas,
+    estimateKind,
     type EstimateScope,
     impactOn,
     withEstimateAmounts,
     withEstimateDeltas,
 } from '@/lib/forecast/edits';
 import { monthWithYear } from '@/lib/forecast/format';
+import { groupName } from '@/lib/forecast/plan-rows';
 import { type ForecastGroup } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { useState } from 'react';
 
-/** What the group's estimated rest plans for the month now, positive. */
+/** What the group's estimate plans for the month now, positive. */
 function plannedIn(group: ForecastGroup, month: string, current: boolean) {
     if (current) {
         return group.estimate?.current?.planned ?? 0;
     }
 
-    return -(group.estimate?.amounts[month] ?? 0);
+    return Math.abs(group.estimate?.amounts[month] ?? 0);
 }
 
 /**
@@ -55,13 +57,17 @@ export function ForecastEstimateSheet({
     const [amount, setAmount] = useState(original);
     const [scope, setScope] = useState<EstimateScope>('from_here');
     const monthLabel = monthWithYear(month, locale);
-    const groupName = group.name ?? __('Other spending');
+    const name = groupName(group);
     const currencyCode = forecast.currencyCode;
 
     const deltas = estimateDeltas(group, amount, month, scope, visible);
     const edited = withEstimateDeltas(
         projectionInput,
-        forecast.account.id,
+        {
+            accountId: forecast.account.id,
+            categoryId: group.categoryId,
+            kind: estimateKind(group),
+        },
         deltas,
     );
     const impact = impactOn(
@@ -81,7 +87,7 @@ export function ForecastEstimateSheet({
             },
             {
                 input: edited,
-                forecast: withEstimateAmounts(forecast, group.key, deltas),
+                forecast: withEstimateAmounts(forecast, group, deltas),
             },
             onClose,
         );
@@ -91,7 +97,7 @@ export function ForecastEstimateSheet({
             open
             onOpenChange={(open) => !open && onClose()}
             eyebrow={`${__('Estimated')} · ${forecast.account.name}`}
-            title={`${__('Estimated rest of :group', { group: groupName })} · ${monthLabel}`}
+            title={`${__('Estimated rest of :group', { group: name })} · ${monthLabel}`}
             testId="forecast-estimate-sheet"
             footer={
                 <div className="ml-auto flex gap-2">

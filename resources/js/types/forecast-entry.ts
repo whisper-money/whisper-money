@@ -31,7 +31,7 @@ export interface ForecastRestOfMonthData {
     currencyCode: string;
     /** The lines not paid yet, soonest first. */
     lines: { name: string; date: string; amount: number }[];
-    /** What is left of each parent category's estimate; a null name is "Other spending". */
+    /** What is left of each parent category's estimate, signed (income positive); a null name is "Other income" or "Other spending". */
     estimates: { name: string | null; amount: number }[];
     endBalance: number;
 }

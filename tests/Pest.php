@@ -869,11 +869,21 @@ function forecastMonthlyCharges(Account $account, string $firstDate, int $months
 
 function forecastExpenseCategory(User $user, ?Category $parent = null, ?string $name = null): Category
 {
+    return forecastCategory($user, CategoryType::Expense, $parent, $name);
+}
+
+function forecastIncomeCategory(User $user, ?Category $parent = null, ?string $name = null): Category
+{
+    return forecastCategory($user, CategoryType::Income, $parent, $name);
+}
+
+function forecastCategory(User $user, CategoryType $type, ?Category $parent = null, ?string $name = null): Category
+{
     $factory = Category::factory();
 
     return ($parent !== null ? $factory->childOf($parent) : $factory)->create([
         'user_id' => $user->id,
-        'type' => CategoryType::Expense,
+        'type' => $type,
         'name' => $name ?? Str::random(10),
     ]);
 }

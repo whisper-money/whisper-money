@@ -44,8 +44,31 @@ function linesRows(
     return rows;
 }
 
-function estimateRow(
+/** One row for the estimated income and one for the estimated spend. */
+function estimateRows(
     estimates: ForecastRestOfMonthData['estimates'],
+    locale: string,
+): Row[] {
+    return [
+        estimateRow(
+            'estimates-income',
+            estimates.filter((estimate) => estimate.amount > 0),
+            __('Other income'),
+            locale,
+        ),
+        estimateRow(
+            'estimates',
+            estimates.filter((estimate) => estimate.amount < 0),
+            __('Other spending'),
+            locale,
+        ),
+    ].filter((row): row is Row => row !== null);
+}
+
+function estimateRow(
+    key: string,
+    estimates: ForecastRestOfMonthData['estimates'],
+    otherName: string,
     locale: string,
 ): Row | null {
     if (estimates.length === 0) {
@@ -54,11 +77,11 @@ function estimateRow(
 
     const names = estimates
         .slice(0, MAX_ESTIMATE_NAMES)
-        .map((estimate) => estimate.name ?? __('Other spending'));
+        .map((estimate) => estimate.name ?? otherName);
     const more = estimates.length - names.length;
 
     return {
-        key: 'estimates',
+        key,
         label: listOf(
             more > 0 ? [...names, __(':count more', { count: more })] : names,
             locale,
@@ -78,10 +101,9 @@ export function ForecastRestOfMonthCard({
     rest: ForecastRestOfMonthData;
 }) {
     const locale = useLocale();
-    const estimates = estimateRow(rest.estimates, locale);
     const rows = [
         ...linesRows(rest.lines, locale),
-        ...(estimates ? [estimates] : []),
+        ...estimateRows(rest.estimates, locale),
     ];
 
     return (

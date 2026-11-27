@@ -342,7 +342,7 @@ class ForecastPresenter
                 array_filter($plan->input->occurrences, fn (Occurrence $occurrence): bool => $occurrence->date <= $end),
             )),
             'estimates' => array_values(array_map(
-                fn (MonthlyEstimate $estimate): array => ['accountId' => $estimate->accountId, 'month' => $estimate->month, 'amount' => $estimate->amount],
+                fn (MonthlyEstimate $estimate): array => $estimate->toArray(),
                 array_filter($plan->input->estimates, fn (MonthlyEstimate $estimate): bool => $estimate->month <= $lastMonth),
             )),
             'startDate' => $today,

@@ -78,6 +78,7 @@ class ForecastSnapshotService
                 fn (CategoryEstimate $estimate): array => [
                     'accountId' => $estimate->accountId,
                     'categoryId' => $estimate->categoryId,
+                    'kind' => $estimate->kind->value,
                     'amount' => $estimate->amount,
                     'basis' => $estimate->basis->value,
                 ],

@@ -10,6 +10,7 @@ use App\Models\Concerns\Archivable;
 use App\Models\Concerns\BelongsToSpace;
 use Carbon\Carbon;
 use Database\Factories\ForecastItemFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -103,6 +104,19 @@ class ForecastItem extends Model
             'amount_tolerance' => 'integer',
             'archived_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The lines the forecast projects: live ones the user made or kept by
+     * hand (yearly, one-off, edited). Detected recurring lines stay stored
+     * but no longer project: each category's estimate covers them.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeProjecting(Builder $query): Builder
+    {
+        return $query->notArchived()->where('source', '!=', ForecastItemSource::Detected);
     }
 
     /** @return BelongsTo<User, $this> */

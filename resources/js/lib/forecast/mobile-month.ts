@@ -1,7 +1,7 @@
 import { type ForecastEditTarget } from '@/components/forecast/forecast-editor';
 import { accountEstimateGroup } from '@/lib/forecast/all-accounts';
 import { dayOf } from '@/lib/forecast/format';
-import { groupId } from '@/lib/forecast/plan-rows';
+import { groupId, groupName } from '@/lib/forecast/plan-rows';
 import {
     type ForecastAllData,
     type ForecastAllGroup,
@@ -51,7 +51,7 @@ export interface MobileMonthGroup {
     /** Where "+ Add something concrete" adds to, or null for no such link. */
     add: {
         section: 'income' | 'expenses';
-        group: Pick<ForecastGroup, 'name' | 'categoryId'>;
+        group: Pick<ForecastGroup, 'name' | 'categoryId' | 'section'>;
     } | null;
 }
 
@@ -128,7 +128,13 @@ function estimateAmount(
     column: ForecastMonthColumn,
 ): number | undefined {
     if (column.status === 'current') {
-        return estimate.current === null ? undefined : -estimate.current.left;
+        if (estimate.current === null) {
+            return undefined;
+        }
+
+        return estimate.kind === 'income'
+            ? estimate.current.left
+            : -estimate.current.left;
     }
 
     return estimate.amounts[column.month];
@@ -231,7 +237,9 @@ interface MonthSource<G extends { key: string; items: ForecastLine[] }> {
     totalOf: (group: G, entries: MobileMonthEntry[]) => number;
     /** What the transfers change the balance by. */
     transfersTotal: (entries: MobileMonthEntry[]) => number;
-    asGroup: (group: G) => Pick<ForecastGroup, 'name' | 'categoryId'>;
+    asGroup: (
+        group: G,
+    ) => Pick<ForecastGroup, 'name' | 'categoryId' | 'section'>;
 }
 
 function buildMonthGroups<G extends { key: string; items: ForecastLine[] }>(
@@ -282,7 +290,7 @@ function buildMonthGroups<G extends { key: string; items: ForecastLine[] }>(
 
             return row('category', {
                 id: groupId('expenses', group.key),
-                name: named.name ?? __('Other spending'),
+                name: groupName(named),
                 hint: monthHint(entries),
                 total: source.totalOf(group, entries),
                 entries,

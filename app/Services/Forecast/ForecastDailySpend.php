@@ -38,7 +38,7 @@ class ForecastDailySpend
         foreach ($plan->categoryEstimates as $estimate) {
             $inUserCurrency = strcasecmp((string) $accounts->get($estimate->accountId)?->currency_code, (string) $user->currency_code) === 0;
 
-            if ($estimate->month === $month && $estimate->categoryId !== null && $inUserCurrency) {
+            if ($estimate->month === $month && $estimate->categoryId !== null && ! $estimate->isIncome() && $inUserCurrency) {
                 $byCategory[$estimate->categoryId][] = $estimate;
             }
         }

@@ -15,7 +15,6 @@ import {
     AddLineRow,
     concreteHint,
     EditableCell,
-    groupName,
     MonthHeader,
     PlanRowShell,
     PlanTableCard,
@@ -31,6 +30,7 @@ import {
     type AllPlanRow,
 } from '@/lib/forecast/all-accounts';
 import { balanceTone, isShort, monthLongName } from '@/lib/forecast/format';
+import { groupName } from '@/lib/forecast/plan-rows';
 import { cn } from '@/lib/utils';
 import {
     type ForecastAccountForecast,
@@ -147,7 +147,7 @@ function RowHeader({
                             expanded && 'rotate-90',
                         )}
                     />
-                    <span>{groupName(row.group.name)}</span>
+                    <span>{groupName(row.group)}</span>
                     <span className="text-[11px] font-normal text-muted-foreground">
                         {concreteHint(
                             row.group.items.length,
@@ -466,7 +466,7 @@ function rowLabel(row: AllPlanRow, context: TableContext): string {
     }
 
     return row.type === 'estimate'
-        ? __('Estimated rest of :group', { group: groupName(row.group.name) })
+        ? __('Estimated rest of :group', { group: groupName(row.group) })
         : '';
 }
 

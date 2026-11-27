@@ -1251,6 +1251,7 @@ describe('the forecast page on a phone', () => {
                         {
                             ...home,
                             key: 'work',
+                            section: 'income',
                             name: 'Work',
                             items: [salary],
                             estimate: null,

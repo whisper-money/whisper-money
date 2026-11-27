@@ -3,20 +3,28 @@
 namespace App\Services\Forecast\Data;
 
 use App\Enums\ForecastEstimateBasis;
+use App\Enums\ForecastEstimateKind;
 
 /**
- * One row of an account's estimated rest before it is spread over the
- * months: its median spend, the budget share it stands on instead (the
- * budget's monthly limit and this account's part of it), and what it spent
- * so far in the start month. Positive minor units of the account's currency.
+ * One row of an account's estimates before it is spread over the months:
+ * whether it is income or spend, its median, the budget share it stands on
+ * instead (the budget's monthly limit and this account's part of it; spend
+ * only), what the start month already moved, and the amounts it moved by
+ * month and day of the month, which its timing is learnt from. Positive
+ * minor units of the account's currency.
  */
 final readonly class EstimateRow
 {
+    /**
+     * @param  array<string, array<int, int>>  $byMonthAndDay  By `Y-m` month, then day of the month.
+     */
     public function __construct(
         public int $median,
         public int $spentNow,
         public ?int $budgetLimit = null,
         private ?float $budgetShare = null,
+        public ForecastEstimateKind $kind = ForecastEstimateKind::Expense,
+        public array $byMonthAndDay = [],
     ) {}
 
     /**
@@ -25,7 +33,15 @@ final readonly class EstimateRow
      */
     public function foldedWith(self $row): self
     {
-        return new self($this->median + $row->median, $this->spentNow + $row->spentNow, $this->budgetLimit, $this->budgetShare);
+        $byMonthAndDay = $this->byMonthAndDay;
+
+        foreach ($row->byMonthAndDay as $month => $days) {
+            foreach ($days as $day => $amount) {
+                $byMonthAndDay[$month][$day] = ($byMonthAndDay[$month][$day] ?? 0) + $amount;
+            }
+        }
+
+        return new self($this->median + $row->median, $this->spentNow + $row->spentNow, $this->budgetLimit, $this->budgetShare, $this->kind, $byMonthAndDay);
     }
 
     public function basis(): ForecastEstimateBasis

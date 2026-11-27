@@ -20,8 +20,10 @@ use Illuminate\Database\Eloquent\Collection;
  * Gathers what a user's forecast in one space is projected from: the
  * accounts it includes (every live account unless the user left it out),
  * each from its last known balance with its yearly rate and wanted minimum;
- * the occurrences of the lines stored for them; and the estimated rest of
- * each parent category. Estimates are worked out over every included account,
+ * the occurrences of the lines that still project for them (the ones the
+ * user made or kept by hand: detected recurring lines stay stored but no
+ * longer project, see ForecastItem::projecting()); and the income and spend
+ * estimates of each parent category. Estimates are worked out over every included account,
  * because a budget is split across them, and only then narrowed to the
  * selection. A transfer counts when either of its accounts is included and
  * selected; the projector moves only the accounts it projects.
@@ -80,7 +82,7 @@ class ForecastPlanBuilder
         return ForecastItem::query()
             ->where('user_id', $user->id)
             ->forSpace($spaceId)
-            ->notArchived()
+            ->projecting()
             ->where(fn ($query) => $query->whereIn('account_id', $accountIds)->orWhereIn('destination_account_id', $accountIds))
             ->with(['versions', 'overrides'])
             ->get();

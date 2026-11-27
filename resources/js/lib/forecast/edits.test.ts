@@ -213,12 +213,14 @@ describe('recomputing the forecast', () => {
     it('moves the estimated rest of a group by what the adjustment changes', () => {
         const group: ForecastGroup = {
             key: 'food',
+            section: 'expenses',
             categoryId: 'food',
             name: 'Food',
             icon: null,
             color: null,
             items: [],
             estimate: {
+                kind: 'expense',
                 basis: 'median',
                 budgetAmount: null,
                 amounts: { '2026-12': -30000, '2027-01': -30000 },
@@ -234,12 +236,17 @@ describe('recomputing the forecast', () => {
             estimateDeltas(group, 20000, '2026-12', 'month', months),
         ).toEqual({ '2026-12': -10000 });
 
-        const adjusted = withEstimateDeltas(input(), 'checking', {
+        const target = {
+            accountId: 'checking',
+            categoryId: 'food',
+            kind: 'expense' as const,
+        };
+        const adjusted = withEstimateDeltas(input(), target, {
             '2026-12': 15000,
         });
 
         expect(adjusted.estimates).toEqual([
-            { accountId: 'checking', month: '2026-12', amount: 15000 },
+            { ...target, month: '2026-12', amount: 15000 },
         ]);
         expect(accountMonths(adjusted, 'checking')[1].close).toBe(
             accountMonths(input(), 'checking')[1].close - 15000,

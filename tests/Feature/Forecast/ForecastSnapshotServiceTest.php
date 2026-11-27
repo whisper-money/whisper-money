@@ -45,6 +45,7 @@ it('freezes the occurrences and estimated rest of the month as it opens', functi
         ->and($snapshot->payload['estimates'])->toBe([[
             'accountId' => $this->account->id,
             'categoryId' => $this->food->id,
+            'kind' => 'expense',
             'amount' => 20000,
             'basis' => 'median',
         ]]);

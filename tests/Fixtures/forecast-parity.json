@@ -96,25 +96,25 @@
                         "accountId": "current",
                         "minimumBalance": 0,
                         "months": [
-                            { "month": "2027-04", "min": -15500, "minDate": "2027-04-27", "close": 220777, "income": 245000, "expenses": 284223, "transfers": -50000, "growth": 0, "estimated": 87223, "band": 34889, "pessimisticMin": -50389 },
-                            { "month": "2027-05", "min": 1200, "minDate": "2027-05-27", "close": 233670, "income": 245000, "expenses": 182107, "transfers": -50000, "growth": 0, "estimated": 97107, "band": 38842, "pessimisticMin": -37642 },
-                            { "month": "2027-06", "min": 20900, "minDate": "2027-06-27", "close": 257258, "income": 245000, "expenses": 171412, "transfers": -50000, "growth": 0, "estimated": 86412, "band": 34564, "pessimisticMin": -13664 }
+                            { "month": "2027-04", "min": -15500, "minDate": "2027-04-27", "close": 220777, "income": 245000, "expenses": 284223, "transfers": -50000, "growth": 0, "estimated": 87223, "estimatedIncome": 0, "band": 34889, "pessimisticMin": -50389 },
+                            { "month": "2027-05", "min": 1200, "minDate": "2027-05-27", "close": 233670, "income": 245000, "expenses": 182107, "transfers": -50000, "growth": 0, "estimated": 97107, "estimatedIncome": 0, "band": 38842, "pessimisticMin": -37642 },
+                            { "month": "2027-06", "min": 20900, "minDate": "2027-06-27", "close": 257258, "income": 245000, "expenses": 171412, "transfers": -50000, "growth": 0, "estimated": 86412, "estimatedIncome": 0, "band": 34564, "pessimisticMin": -13664 }
                         ]
                     },
                     {
                         "accountId": "savings",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-04", "min": 550000, "minDate": "2027-04-01", "close": 550916, "income": 0, "expenses": 0, "transfers": 50000, "growth": 916, "estimated": 0, "band": 0, "pessimisticMin": 550000 },
-                            { "month": "2027-05", "min": 600916, "minDate": "2027-05-01", "close": 601917, "income": 0, "expenses": 0, "transfers": 50000, "growth": 1001, "estimated": 0, "band": 0, "pessimisticMin": 600916 },
-                            { "month": "2027-06", "min": 651917, "minDate": "2027-06-01", "close": 653003, "income": 0, "expenses": 0, "transfers": 50000, "growth": 1086, "estimated": 0, "band": 0, "pessimisticMin": 651917 }
+                            { "month": "2027-04", "min": 550000, "minDate": "2027-04-01", "close": 550916, "income": 0, "expenses": 0, "transfers": 50000, "growth": 916, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 550000 },
+                            { "month": "2027-05", "min": 600916, "minDate": "2027-05-01", "close": 601917, "income": 0, "expenses": 0, "transfers": 50000, "growth": 1001, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 600916 },
+                            { "month": "2027-06", "min": 651917, "minDate": "2027-06-01", "close": 653003, "income": 0, "expenses": 0, "transfers": 50000, "growth": 1086, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 651917 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-04", "min": 534500, "minDate": "2027-04-27", "close": 771693, "income": 245000, "expenses": 284223, "transfers": 0, "growth": 916, "estimated": 87223, "band": 34889, "pessimisticMin": 499611 },
-                    { "month": "2027-05", "min": 602116, "minDate": "2027-05-27", "close": 835587, "income": 245000, "expenses": 182107, "transfers": 0, "growth": 1001, "estimated": 97107, "band": 38842, "pessimisticMin": 563274 },
-                    { "month": "2027-06", "min": 672817, "minDate": "2027-06-27", "close": 910261, "income": 245000, "expenses": 171412, "transfers": 0, "growth": 1086, "estimated": 86412, "band": 34564, "pessimisticMin": 638253 }
+                    { "month": "2027-04", "min": 534500, "minDate": "2027-04-27", "close": 771693, "income": 245000, "expenses": 284223, "transfers": 0, "growth": 916, "estimated": 87223, "estimatedIncome": 0, "band": 34889, "pessimisticMin": 499611 },
+                    { "month": "2027-05", "min": 602116, "minDate": "2027-05-27", "close": 835587, "income": 245000, "expenses": 182107, "transfers": 0, "growth": 1001, "estimated": 97107, "estimatedIncome": 0, "band": 38842, "pessimisticMin": 563274 },
+                    { "month": "2027-06", "min": 672817, "minDate": "2027-06-27", "close": 910261, "income": 245000, "expenses": 171412, "transfers": 0, "growth": 1086, "estimated": 86412, "estimatedIncome": 0, "band": 34564, "pessimisticMin": 638253 }
                 ]
             }
         }
@@ -158,14 +158,14 @@
                         "accountId": "current",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-09", "min": -18125, "minDate": "2027-09-29", "close": 180000, "income": 200000, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "band": 12000, "pessimisticMin": -30125 },
-                            { "month": "2027-10", "min": 150000, "minDate": "2027-10-31", "close": 150000, "income": 0, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "band": 12000, "pessimisticMin": 138000 }
+                            { "month": "2027-09", "min": -18125, "minDate": "2027-09-29", "close": 180000, "income": 200000, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "estimatedIncome": 0, "band": 12000, "pessimisticMin": -30125 },
+                            { "month": "2027-10", "min": 150000, "minDate": "2027-10-31", "close": 150000, "income": 0, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "estimatedIncome": 0, "band": 12000, "pessimisticMin": 138000 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-09", "min": -18125, "minDate": "2027-09-29", "close": 180000, "income": 200000, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "band": 12000, "pessimisticMin": -30125 },
-                    { "month": "2027-10", "min": 150000, "minDate": "2027-10-31", "close": 150000, "income": 0, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "band": 12000, "pessimisticMin": 138000 }
+                    { "month": "2027-09", "min": -18125, "minDate": "2027-09-29", "close": 180000, "income": 200000, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "estimatedIncome": 0, "band": 12000, "pessimisticMin": -30125 },
+                    { "month": "2027-10", "min": 150000, "minDate": "2027-10-31", "close": 150000, "income": 0, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "estimatedIncome": 0, "band": 12000, "pessimisticMin": 138000 }
                 ]
             }
         }
@@ -209,18 +209,18 @@
                         "accountId": "current",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": 46000, "minDate": "2027-01-05", "close": 46000, "income": 0, "expenses": 4000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 46000 },
-                            { "month": "2027-02", "min": 40000, "minDate": "2027-02-05", "close": 40000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 40000 },
-                            { "month": "2027-03", "min": 40000, "minDate": "2027-03-01", "close": 40000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 40000 },
-                            { "month": "2027-04", "min": 36000, "minDate": "2027-04-05", "close": 36000, "income": 0, "expenses": 4000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 36000 }
+                            { "month": "2027-01", "min": 46000, "minDate": "2027-01-05", "close": 46000, "income": 0, "expenses": 4000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 46000 },
+                            { "month": "2027-02", "min": 40000, "minDate": "2027-02-05", "close": 40000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 40000 },
+                            { "month": "2027-03", "min": 40000, "minDate": "2027-03-01", "close": 40000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 40000 },
+                            { "month": "2027-04", "min": 36000, "minDate": "2027-04-05", "close": 36000, "income": 0, "expenses": 4000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 36000 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-01", "min": 46000, "minDate": "2027-01-05", "close": 46000, "income": 0, "expenses": 4000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 46000 },
-                    { "month": "2027-02", "min": 40000, "minDate": "2027-02-05", "close": 40000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 40000 },
-                    { "month": "2027-03", "min": 40000, "minDate": "2027-03-01", "close": 40000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 40000 },
-                    { "month": "2027-04", "min": 36000, "minDate": "2027-04-05", "close": 36000, "income": 0, "expenses": 4000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 36000 }
+                    { "month": "2027-01", "min": 46000, "minDate": "2027-01-05", "close": 46000, "income": 0, "expenses": 4000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 46000 },
+                    { "month": "2027-02", "min": 40000, "minDate": "2027-02-05", "close": 40000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 40000 },
+                    { "month": "2027-03", "min": 40000, "minDate": "2027-03-01", "close": 40000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 40000 },
+                    { "month": "2027-04", "min": 36000, "minDate": "2027-04-05", "close": 36000, "income": 0, "expenses": 4000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 36000 }
                 ]
             }
         }
@@ -262,18 +262,18 @@
                         "accountId": "current",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": 400000, "minDate": "2027-01-10", "close": 400000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 400000 },
-                            { "month": "2027-02", "min": 320000, "minDate": "2027-02-01", "close": 320000, "income": 0, "expenses": 80000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 320000 },
-                            { "month": "2027-03", "min": 230000, "minDate": "2027-03-01", "close": 230000, "income": 0, "expenses": 90000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 230000 },
-                            { "month": "2027-04", "min": 140000, "minDate": "2027-04-01", "close": 140000, "income": 0, "expenses": 90000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 140000 }
+                            { "month": "2027-01", "min": 400000, "minDate": "2027-01-10", "close": 400000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 400000 },
+                            { "month": "2027-02", "min": 320000, "minDate": "2027-02-01", "close": 320000, "income": 0, "expenses": 80000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 320000 },
+                            { "month": "2027-03", "min": 230000, "minDate": "2027-03-01", "close": 230000, "income": 0, "expenses": 90000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 230000 },
+                            { "month": "2027-04", "min": 140000, "minDate": "2027-04-01", "close": 140000, "income": 0, "expenses": 90000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 140000 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-01", "min": 400000, "minDate": "2027-01-10", "close": 400000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 400000 },
-                    { "month": "2027-02", "min": 320000, "minDate": "2027-02-01", "close": 320000, "income": 0, "expenses": 80000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 320000 },
-                    { "month": "2027-03", "min": 230000, "minDate": "2027-03-01", "close": 230000, "income": 0, "expenses": 90000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 230000 },
-                    { "month": "2027-04", "min": 140000, "minDate": "2027-04-01", "close": 140000, "income": 0, "expenses": 90000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 140000 }
+                    { "month": "2027-01", "min": 400000, "minDate": "2027-01-10", "close": 400000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 400000 },
+                    { "month": "2027-02", "min": 320000, "minDate": "2027-02-01", "close": 320000, "income": 0, "expenses": 80000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 320000 },
+                    { "month": "2027-03", "min": 230000, "minDate": "2027-03-01", "close": 230000, "income": 0, "expenses": 90000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 230000 },
+                    { "month": "2027-04", "min": 140000, "minDate": "2027-04-01", "close": 140000, "income": 0, "expenses": 90000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 140000 }
                 ]
             }
         }
@@ -330,22 +330,22 @@
                         "accountId": "current",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": 70000, "minDate": "2027-01-15", "close": 220000, "income": 150000, "expenses": 0, "transfers": -30000, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 70000 },
-                            { "month": "2027-02", "min": 138572, "minDate": "2027-02-24", "close": 280000, "income": 150000, "expenses": 60000, "transfers": -30000, "growth": 0, "estimated": 60000, "band": 24000, "pessimisticMin": 114572 }
+                            { "month": "2027-01", "min": 70000, "minDate": "2027-01-15", "close": 220000, "income": 150000, "expenses": 0, "transfers": -30000, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 70000 },
+                            { "month": "2027-02", "min": 138572, "minDate": "2027-02-24", "close": 280000, "income": 150000, "expenses": 60000, "transfers": -30000, "growth": 0, "estimated": 60000, "estimatedIncome": 0, "band": 24000, "pessimisticMin": 114572 }
                         ]
                     },
                     {
                         "accountId": "savings",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": 20000, "minDate": "2027-01-01", "close": 50000, "income": 0, "expenses": 0, "transfers": 30000, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 20000 },
-                            { "month": "2027-02", "min": 50000, "minDate": "2027-02-01", "close": 80000, "income": 0, "expenses": 0, "transfers": 30000, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 50000 }
+                            { "month": "2027-01", "min": 20000, "minDate": "2027-01-01", "close": 50000, "income": 0, "expenses": 0, "transfers": 30000, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 20000 },
+                            { "month": "2027-02", "min": 50000, "minDate": "2027-02-01", "close": 80000, "income": 0, "expenses": 0, "transfers": 30000, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 50000 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-01", "min": 120000, "minDate": "2027-01-01", "close": 270000, "income": 150000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 120000 },
-                    { "month": "2027-02", "min": 218572, "minDate": "2027-02-24", "close": 360000, "income": 150000, "expenses": 60000, "transfers": 0, "growth": 0, "estimated": 60000, "band": 24000, "pessimisticMin": 194572 }
+                    { "month": "2027-01", "min": 120000, "minDate": "2027-01-01", "close": 270000, "income": 150000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 120000 },
+                    { "month": "2027-02", "min": 218572, "minDate": "2027-02-24", "close": 360000, "income": 150000, "expenses": 60000, "transfers": 0, "growth": 0, "estimated": 60000, "estimatedIncome": 0, "band": 24000, "pessimisticMin": 194572 }
                 ]
             }
         }
@@ -386,20 +386,20 @@
                         "accountId": "current",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": 94000, "minDate": "2027-01-12", "close": 94000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 94000 },
-                            { "month": "2027-02", "min": 94000, "minDate": "2027-02-01", "close": 94000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 94000 },
-                            { "month": "2027-03", "min": 88000, "minDate": "2027-03-12", "close": 88000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 88000 },
-                            { "month": "2027-04", "min": 88000, "minDate": "2027-04-01", "close": 88000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 88000 },
-                            { "month": "2027-05", "min": 82000, "minDate": "2027-05-12", "close": 82000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 82000 }
+                            { "month": "2027-01", "min": 94000, "minDate": "2027-01-12", "close": 94000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 94000 },
+                            { "month": "2027-02", "min": 94000, "minDate": "2027-02-01", "close": 94000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 94000 },
+                            { "month": "2027-03", "min": 88000, "minDate": "2027-03-12", "close": 88000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 88000 },
+                            { "month": "2027-04", "min": 88000, "minDate": "2027-04-01", "close": 88000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 88000 },
+                            { "month": "2027-05", "min": 82000, "minDate": "2027-05-12", "close": 82000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 82000 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-01", "min": 94000, "minDate": "2027-01-12", "close": 94000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 94000 },
-                    { "month": "2027-02", "min": 94000, "minDate": "2027-02-01", "close": 94000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 94000 },
-                    { "month": "2027-03", "min": 88000, "minDate": "2027-03-12", "close": 88000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 88000 },
-                    { "month": "2027-04", "min": 88000, "minDate": "2027-04-01", "close": 88000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 88000 },
-                    { "month": "2027-05", "min": 82000, "minDate": "2027-05-12", "close": 82000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 82000 }
+                    { "month": "2027-01", "min": 94000, "minDate": "2027-01-12", "close": 94000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 94000 },
+                    { "month": "2027-02", "min": 94000, "minDate": "2027-02-01", "close": 94000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 94000 },
+                    { "month": "2027-03", "min": 88000, "minDate": "2027-03-12", "close": 88000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 88000 },
+                    { "month": "2027-04", "min": 88000, "minDate": "2027-04-01", "close": 88000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 88000 },
+                    { "month": "2027-05", "min": 82000, "minDate": "2027-05-12", "close": 82000, "income": 0, "expenses": 6000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 82000 }
                 ]
             }
         }
@@ -452,22 +452,22 @@
                         "accountId": "current",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": 97500, "minDate": "2027-01-31", "close": 97500, "income": 0, "expenses": 2500, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 97500 },
-                            { "month": "2027-02", "min": 85500, "minDate": "2027-02-28", "close": 85500, "income": 0, "expenses": 12000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 85500 },
-                            { "month": "2027-03", "min": 85500, "minDate": "2027-03-01", "close": 85500, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 85500 },
-                            { "month": "2027-04", "min": 83000, "minDate": "2027-04-30", "close": 83000, "income": 0, "expenses": 2500, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 83000 },
-                            { "month": "2027-05", "min": 83000, "minDate": "2027-05-01", "close": 83000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 83000 },
-                            { "month": "2027-06", "min": 83000, "minDate": "2027-06-01", "close": 83000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 83000 }
+                            { "month": "2027-01", "min": 97500, "minDate": "2027-01-31", "close": 97500, "income": 0, "expenses": 2500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 97500 },
+                            { "month": "2027-02", "min": 85500, "minDate": "2027-02-28", "close": 85500, "income": 0, "expenses": 12000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 85500 },
+                            { "month": "2027-03", "min": 85500, "minDate": "2027-03-01", "close": 85500, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 85500 },
+                            { "month": "2027-04", "min": 83000, "minDate": "2027-04-30", "close": 83000, "income": 0, "expenses": 2500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 83000 },
+                            { "month": "2027-05", "min": 83000, "minDate": "2027-05-01", "close": 83000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 83000 },
+                            { "month": "2027-06", "min": 83000, "minDate": "2027-06-01", "close": 83000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 83000 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-01", "min": 97500, "minDate": "2027-01-31", "close": 97500, "income": 0, "expenses": 2500, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 97500 },
-                    { "month": "2027-02", "min": 85500, "minDate": "2027-02-28", "close": 85500, "income": 0, "expenses": 12000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 85500 },
-                    { "month": "2027-03", "min": 85500, "minDate": "2027-03-01", "close": 85500, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 85500 },
-                    { "month": "2027-04", "min": 83000, "minDate": "2027-04-30", "close": 83000, "income": 0, "expenses": 2500, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 83000 },
-                    { "month": "2027-05", "min": 83000, "minDate": "2027-05-01", "close": 83000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 83000 },
-                    { "month": "2027-06", "min": 83000, "minDate": "2027-06-01", "close": 83000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 83000 }
+                    { "month": "2027-01", "min": 97500, "minDate": "2027-01-31", "close": 97500, "income": 0, "expenses": 2500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 97500 },
+                    { "month": "2027-02", "min": 85500, "minDate": "2027-02-28", "close": 85500, "income": 0, "expenses": 12000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 85500 },
+                    { "month": "2027-03", "min": 85500, "minDate": "2027-03-01", "close": 85500, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 85500 },
+                    { "month": "2027-04", "min": 83000, "minDate": "2027-04-30", "close": 83000, "income": 0, "expenses": 2500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 83000 },
+                    { "month": "2027-05", "min": 83000, "minDate": "2027-05-01", "close": 83000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 83000 },
+                    { "month": "2027-06", "min": 83000, "minDate": "2027-06-01", "close": 83000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 83000 }
                 ]
             }
         }
@@ -520,18 +520,18 @@
                         "accountId": "current",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": 10000, "minDate": "2027-01-10", "close": 10000, "income": 0, "expenses": 20000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 10000 },
-                            { "month": "2027-02", "min": -10000, "minDate": "2027-02-10", "close": -10000, "income": 0, "expenses": 20000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": -10000 },
-                            { "month": "2027-03", "min": -10000, "minDate": "2027-03-01", "close": 90000, "income": 100000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": -10000 },
-                            { "month": "2027-04", "min": 90000, "minDate": "2027-04-01", "close": 90000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 90000 }
+                            { "month": "2027-01", "min": 10000, "minDate": "2027-01-10", "close": 10000, "income": 0, "expenses": 20000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 10000 },
+                            { "month": "2027-02", "min": -10000, "minDate": "2027-02-10", "close": -10000, "income": 0, "expenses": 20000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": -10000 },
+                            { "month": "2027-03", "min": -10000, "minDate": "2027-03-01", "close": 90000, "income": 100000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": -10000 },
+                            { "month": "2027-04", "min": 90000, "minDate": "2027-04-01", "close": 90000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 90000 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-01", "min": 10000, "minDate": "2027-01-10", "close": 10000, "income": 0, "expenses": 20000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 10000 },
-                    { "month": "2027-02", "min": -10000, "minDate": "2027-02-10", "close": -10000, "income": 0, "expenses": 20000, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": -10000 },
-                    { "month": "2027-03", "min": -10000, "minDate": "2027-03-01", "close": 90000, "income": 100000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": -10000 },
-                    { "month": "2027-04", "min": 90000, "minDate": "2027-04-01", "close": 90000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 90000 }
+                    { "month": "2027-01", "min": 10000, "minDate": "2027-01-10", "close": 10000, "income": 0, "expenses": 20000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 10000 },
+                    { "month": "2027-02", "min": -10000, "minDate": "2027-02-10", "close": -10000, "income": 0, "expenses": 20000, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": -10000 },
+                    { "month": "2027-03", "min": -10000, "minDate": "2027-03-01", "close": 90000, "income": 100000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": -10000 },
+                    { "month": "2027-04", "min": 90000, "minDate": "2027-04-01", "close": 90000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 90000 }
                 ]
             }
         }
@@ -558,31 +558,31 @@
                         "accountId": "broker",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": 1200000, "minDate": "2027-01-20", "close": 1200000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 1200000 },
-                            { "month": "2027-02", "min": 1200000, "minDate": "2027-02-01", "close": 1206000, "income": 0, "expenses": 0, "transfers": 0, "growth": 6000, "estimated": 0, "band": 0, "pessimisticMin": 1200000 },
-                            { "month": "2027-03", "min": 1206000, "minDate": "2027-03-01", "close": 1212030, "income": 0, "expenses": 0, "transfers": 0, "growth": 6030, "estimated": 0, "band": 0, "pessimisticMin": 1206000 }
+                            { "month": "2027-01", "min": 1200000, "minDate": "2027-01-20", "close": 1200000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 1200000 },
+                            { "month": "2027-02", "min": 1200000, "minDate": "2027-02-01", "close": 1206000, "income": 0, "expenses": 0, "transfers": 0, "growth": 6000, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 1200000 },
+                            { "month": "2027-03", "min": 1206000, "minDate": "2027-03-01", "close": 1212030, "income": 0, "expenses": 0, "transfers": 0, "growth": 6030, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 1206000 }
                         ]
                     },
                     {
                         "accountId": "current",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": -6000, "minDate": "2027-01-31", "close": -6000, "income": 0, "expenses": 1000, "transfers": 0, "growth": 0, "estimated": 1000, "band": 400, "pessimisticMin": -6400 },
-                            { "month": "2027-02", "min": -6000, "minDate": "2027-02-01", "close": -6000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": -6000 },
-                            { "month": "2027-03", "min": -6000, "minDate": "2027-03-01", "close": -6000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": -6000 }
+                            { "month": "2027-01", "min": -6000, "minDate": "2027-01-31", "close": -6000, "income": 0, "expenses": 1000, "transfers": 0, "growth": 0, "estimated": 1000, "estimatedIncome": 0, "band": 400, "pessimisticMin": -6400 },
+                            { "month": "2027-02", "min": -6000, "minDate": "2027-02-01", "close": -6000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": -6000 },
+                            { "month": "2027-03", "min": -6000, "minDate": "2027-03-01", "close": -6000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": -6000 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-01", "min": 1194000, "minDate": "2027-01-31", "close": 1194000, "income": 0, "expenses": 1000, "transfers": 0, "growth": 0, "estimated": 1000, "band": 400, "pessimisticMin": 1193600 },
-                    { "month": "2027-02", "min": 1194000, "minDate": "2027-02-01", "close": 1200000, "income": 0, "expenses": 0, "transfers": 0, "growth": 6000, "estimated": 0, "band": 0, "pessimisticMin": 1194000 },
-                    { "month": "2027-03", "min": 1200000, "minDate": "2027-03-01", "close": 1206030, "income": 0, "expenses": 0, "transfers": 0, "growth": 6030, "estimated": 0, "band": 0, "pessimisticMin": 1200000 }
+                    { "month": "2027-01", "min": 1194000, "minDate": "2027-01-31", "close": 1194000, "income": 0, "expenses": 1000, "transfers": 0, "growth": 0, "estimated": 1000, "estimatedIncome": 0, "band": 400, "pessimisticMin": 1193600 },
+                    { "month": "2027-02", "min": 1194000, "minDate": "2027-02-01", "close": 1200000, "income": 0, "expenses": 0, "transfers": 0, "growth": 6000, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 1194000 },
+                    { "month": "2027-03", "min": 1200000, "minDate": "2027-03-01", "close": 1206030, "income": 0, "expenses": 0, "transfers": 0, "growth": 6030, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 1200000 }
                 ]
             }
         }
     },
     {
-        "name": "estimates add up per month and a month never spends less than nothing",
+        "name": "estimates add up per month and a negative one counts as nothing",
         "input": {
             "items": [
                 {
@@ -621,14 +621,114 @@
                         "accountId": "current",
                         "minimumBalance": null,
                         "months": [
-                            { "month": "2027-01", "min": -28064, "minDate": "2027-01-29", "close": 70000, "income": 100000, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "band": 12000, "pessimisticMin": -40064 },
-                            { "month": "2027-02", "min": 70000, "minDate": "2027-02-01", "close": 170000, "income": 100000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 70000 }
+                            { "month": "2027-01", "min": -37419, "minDate": "2027-01-29", "close": 60000, "income": 100000, "expenses": 40000, "transfers": 0, "growth": 0, "estimated": 40000, "estimatedIncome": 0, "band": 16000, "pessimisticMin": -53419 },
+                            { "month": "2027-02", "min": 60000, "minDate": "2027-02-01", "close": 160000, "income": 100000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 60000 }
                         ]
                     }
                 ],
                 "total": [
-                    { "month": "2027-01", "min": -28064, "minDate": "2027-01-29", "close": 70000, "income": 100000, "expenses": 30000, "transfers": 0, "growth": 0, "estimated": 30000, "band": 12000, "pessimisticMin": -40064 },
-                    { "month": "2027-02", "min": 70000, "minDate": "2027-02-01", "close": 170000, "income": 100000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "band": 0, "pessimisticMin": 70000 }
+                    { "month": "2027-01", "min": -37419, "minDate": "2027-01-29", "close": 60000, "income": 100000, "expenses": 40000, "transfers": 0, "growth": 0, "estimated": 40000, "estimatedIncome": 0, "band": 16000, "pessimisticMin": -53419 },
+                    { "month": "2027-02", "min": 60000, "minDate": "2027-02-01", "close": 160000, "income": 100000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 60000 }
+                ]
+            }
+        }
+    },
+    {
+        "name": "income lands whole on its median day: clamped to a short month and, in the start month, to the days left",
+        "input": {
+            "items": [],
+            "accounts": [
+                { "id": "current", "openingBalance": 100000, "annualRateBps": null, "minimumBalance": 0 }
+            ],
+            "estimates": [
+                { "accountId": "current", "month": "2027-01", "amount": 250000, "kind": "income", "categoryId": "salary", "day": 27, "profile": null },
+                { "accountId": "current", "month": "2027-01", "amount": 5000, "kind": "income", "categoryId": "rent-in", "day": 10, "profile": null },
+                { "accountId": "current", "month": "2027-01", "amount": 120000, "kind": "expense", "categoryId": "groceries", "day": null, "profile": null },
+                { "accountId": "current", "month": "2027-02", "amount": 250000, "kind": "income", "categoryId": "salary", "day": 31, "profile": null },
+                { "accountId": "current", "month": "2027-02", "amount": 180000, "kind": "expense", "categoryId": "groceries", "day": null, "profile": null },
+                { "accountId": "current", "month": "2027-03", "amount": 250000, "kind": "income", "categoryId": "salary", "day": 31, "profile": null }
+            ],
+            "startDate": "2027-01-15",
+            "horizonMonths": 3
+        },
+        "expected": {
+            "occurrences": [],
+            "projection": {
+                "accounts": [
+                    {
+                        "accountId": "current",
+                        "minimumBalance": 0,
+                        "months": [
+                            { "month": "2027-01", "min": 20295, "minDate": "2027-01-26", "close": 235000, "income": 255000, "expenses": 120000, "transfers": 0, "growth": 0, "estimated": 120000, "estimatedIncome": 255000, "band": 73500, "pessimisticMin": -53205 },
+                            { "month": "2027-02", "min": 61429, "minDate": "2027-02-27", "close": 305000, "income": 250000, "expenses": 180000, "transfers": 0, "growth": 0, "estimated": 180000, "estimatedIncome": 250000, "band": 97000, "pessimisticMin": -35571 },
+                            { "month": "2027-03", "min": 305000, "minDate": "2027-03-01", "close": 555000, "income": 250000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 250000, "band": 25000, "pessimisticMin": 280000 }
+                        ]
+                    }
+                ],
+                "total": [
+                    { "month": "2027-01", "min": 20295, "minDate": "2027-01-26", "close": 235000, "income": 255000, "expenses": 120000, "transfers": 0, "growth": 0, "estimated": 120000, "estimatedIncome": 255000, "band": 73500, "pessimisticMin": -53205 },
+                    { "month": "2027-02", "min": 61429, "minDate": "2027-02-27", "close": 305000, "income": 250000, "expenses": 180000, "transfers": 0, "growth": 0, "estimated": 180000, "estimatedIncome": 250000, "band": 97000, "pessimisticMin": -35571 },
+                    { "month": "2027-03", "min": 305000, "minDate": "2027-03-01", "close": 555000, "income": 250000, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 250000, "band": 25000, "pessimisticMin": 280000 }
+                ]
+            }
+        }
+    },
+    {
+        "name": "spend follows its day profile: a short month puts the days it lacks on its last day, no weight left spreads evenly",
+        "input": {
+            "items": [],
+            "accounts": [
+                { "id": "current", "openingBalance": 300000, "annualRateBps": null, "minimumBalance": 0 }
+            ],
+            "estimates": [
+                {
+                    "accountId": "current",
+                    "month": "2027-01",
+                    "amount": 60000,
+                    "kind": "expense",
+                    "categoryId": "groceries",
+                    "day": null,
+                    "profile": [5000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2000, 0]
+                },
+                {
+                    "accountId": "current",
+                    "month": "2027-01",
+                    "amount": 24000,
+                    "kind": "expense",
+                    "categoryId": "leisure",
+                    "day": null,
+                    "profile": [0, 0, 0, 0, 10000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                },
+                {
+                    "accountId": "current",
+                    "month": "2027-02",
+                    "amount": 100001,
+                    "kind": "expense",
+                    "categoryId": "groceries",
+                    "day": null,
+                    "profile": [5000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1500, 500]
+                },
+                { "accountId": "current", "month": "2027-02", "amount": 40000, "kind": "income", "categoryId": "salary", "day": 28, "profile": null }
+            ],
+            "startDate": "2027-01-20",
+            "horizonMonths": 2
+        },
+        "expected": {
+            "occurrences": [],
+            "projection": {
+                "accounts": [
+                    {
+                        "accountId": "current",
+                        "minimumBalance": 0,
+                        "months": [
+                            { "month": "2027-01", "min": 216000, "minDate": "2027-01-31", "close": 216000, "income": 0, "expenses": 84000, "transfers": 0, "growth": 0, "estimated": 84000, "estimatedIncome": 0, "band": 33600, "pessimisticMin": 182400 },
+                            { "month": "2027-02", "min": 136000, "minDate": "2027-02-15", "close": 155999, "income": 40000, "expenses": 100001, "transfers": 0, "growth": 0, "estimated": 100001, "estimatedIncome": 40000, "band": 44000, "pessimisticMin": 92000 }
+                        ]
+                    }
+                ],
+                "total": [
+                    { "month": "2027-01", "min": 216000, "minDate": "2027-01-31", "close": 216000, "income": 0, "expenses": 84000, "transfers": 0, "growth": 0, "estimated": 84000, "estimatedIncome": 0, "band": 33600, "pessimisticMin": 182400 },
+                    { "month": "2027-02", "min": 136000, "minDate": "2027-02-15", "close": 155999, "income": 40000, "expenses": 100001, "transfers": 0, "growth": 0, "estimated": 100001, "estimatedIncome": 40000, "band": 44000, "pessimisticMin": 92000 }
                 ]
             }
         }
