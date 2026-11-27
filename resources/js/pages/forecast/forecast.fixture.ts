@@ -32,6 +32,7 @@ export function projected(month: string, min: number): ProjectedMonth {
         transfers: 0,
         growth: 0,
         estimated: 20000,
+        estimatedIncome: 0,
         band: 8000,
         pessimisticMin: min - 8000,
     };
@@ -77,6 +78,7 @@ export function line(overrides: Partial<ForecastLine>): ForecastLine {
 
 export const home: ForecastGroup = {
     key: 'home',
+    section: 'expenses',
     categoryId: 'home',
     name: 'Home',
     icon: null,
@@ -96,6 +98,7 @@ export const home: ForecastGroup = {
         }),
     ],
     estimate: {
+        kind: 'expense',
         basis: 'median',
         budgetAmount: null,
         amounts: Object.fromEntries(MONTHS.slice(1).map((m) => [m, -6000])),

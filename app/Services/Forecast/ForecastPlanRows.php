@@ -2,6 +2,7 @@
 
 namespace App\Services\Forecast;
 
+use App\Enums\ForecastEstimateKind;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\ForecastItem;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Collection;
 /**
  * The rows of the forecast plan of one account, as the page shows them: the
  * income and the spend grouped under the user's parent categories, each with
- * its concrete lines and its estimated rest, and the transfers apart. Amounts
+ * its concrete lines and its estimate, and the transfers apart. Amounts
  * are signed from the account's side (a transfer into it is positive) and
  * keyed by `Y-m` month, only for the months given, so nothing past them is
  * ever sent. The month in progress also says what really happened: a line is
@@ -103,14 +104,16 @@ class ForecastPlanRows
             $groups[$section][$this->groupKey($item->category_id, $parents)]['items'][] = $row;
         }
 
-        foreach ($this->estimatesByGroup($estimates) as $key => $byAccount) {
-            foreach ($byAccount as $accountId => $accountEstimates) {
-                $row = $this->estimateRow($accountEstimates, $months);
+        foreach ($this->estimatesByGroup($estimates) as $section => $byGroup) {
+            foreach ($byGroup as $key => $byAccount) {
+                foreach ($byAccount as $accountId => $accountEstimates) {
+                    $row = $this->estimateRow($accountEstimates, $months);
 
-                if ($perAccountEstimates) {
-                    $groups['expenses'][$key]['estimates'][] = ['accountId' => (string) $accountId, ...$row];
-                } else {
-                    $groups['expenses'][$key]['estimate'] = $row;
+                    if ($perAccountEstimates) {
+                        $groups[$section][$key]['estimates'][] = ['accountId' => (string) $accountId, ...$row];
+                    } else {
+                        $groups[$section][$key]['estimate'] = $row;
+                    }
                 }
             }
         }
@@ -118,8 +121,8 @@ class ForecastPlanRows
         $categories = $this->categories(array_merge(array_keys($groups['income']), array_keys($groups['expenses'])));
 
         return [
-            'income' => $this->groupRows($groups['income'], $categories, $perAccountEstimates),
-            'expenses' => $this->groupRows($groups['expenses'], $categories, $perAccountEstimates),
+            'income' => $this->groupRows('income', $groups['income'], $categories, $perAccountEstimates),
+            'expenses' => $this->groupRows('expenses', $groups['expenses'], $categories, $perAccountEstimates),
             'transfers' => $this->sortedByWeight($transfers),
         ];
     }
@@ -386,22 +389,23 @@ class ForecastPlanRows
 
     /**
      * @param  list<CategoryEstimate>  $estimates
-     * @return array<string, array<string, list<CategoryEstimate>>> By group, then account id.
+     * @return array<'income'|'expenses', array<string, array<string, list<CategoryEstimate>>>> By section, group, then account id.
      */
     private function estimatesByGroup(array $estimates): array
     {
         $byGroup = [];
 
         foreach ($estimates as $estimate) {
-            $byGroup[$estimate->categoryId ?? self::OTHER][$estimate->accountId][] = $estimate;
+            $byGroup[$estimate->isIncome() ? 'income' : 'expenses'][$estimate->categoryId ?? self::OTHER][$estimate->accountId][] = $estimate;
         }
 
         return $byGroup;
     }
 
     /**
-     * The estimated rest of a group: negative amounts by month, and what the
-     * month in progress has spent of it so far.
+     * The estimate of a group: signed amounts by month (income positive,
+     * spend negative), its `kind`, and what the month in progress has
+     * already spent or received of it (`spent`, positive).
      *
      * @param  list<CategoryEstimate>  $estimates
      * @param  list<string>  $months
@@ -422,13 +426,14 @@ class ForecastPlanRows
             if ($estimate->month === $months[0]) {
                 $current = ['spent' => $estimate->spent, 'planned' => $estimate->planned ?? $estimate->amount, 'left' => $estimate->amount];
             } else {
-                $amounts[$estimate->month] = -$estimate->amount;
+                $amounts[$estimate->month] = $estimate->signedAmount();
             }
 
             $basis ??= ['basis' => $estimate->basis->value, 'budgetAmount' => $estimate->budgetAmount];
         }
 
         return [
+            'kind' => ($estimates[0] ?? null)?->kind->value ?? ForecastEstimateKind::Expense->value,
             ...($basis ?? ['basis' => null, 'budgetAmount' => null]),
             'amounts' => $amounts,
             'current' => $current,
@@ -451,11 +456,12 @@ class ForecastPlanRows
     /**
      * The groups heaviest first, the uncategorized one last.
      *
+     * @param  'income'|'expenses'  $section
      * @param  array<string, array{items?: list<array<string, mixed>>, estimate?: array<string, mixed>, estimates?: list<array<string, mixed>>}>  $groups
      * @param  array<string, Category>  $categories
      * @return list<array<string, mixed>>
      */
-    private function groupRows(array $groups, array $categories, bool $perAccountEstimates): array
+    private function groupRows(string $section, array $groups, array $categories, bool $perAccountEstimates): array
     {
         $rows = [];
 
@@ -463,6 +469,7 @@ class ForecastPlanRows
             $key = (string) $key;
             $rows[] = [
                 'key' => $key,
+                'section' => $section,
                 'categoryId' => $key === self::OTHER ? null : $key,
                 'name' => $categories[$key]->name ?? null,
                 'icon' => $categories[$key]->icon ?? null,

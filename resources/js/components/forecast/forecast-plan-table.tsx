@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/card';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
+import { isAdjustableEstimate } from '@/lib/forecast/edits';
 import {
     isShort,
     monthColumnLabel,
@@ -28,6 +29,7 @@ import {
 } from '@/lib/forecast/format';
 import {
     buildPlanRows,
+    groupName,
     groupRowIds,
     type PlanRow,
     type PlanSection,
@@ -82,10 +84,6 @@ function sectionLabel(section: PlanSection): { name: string; hint: string } {
                 ),
             };
     }
-}
-
-export function groupName(name: string | null): string {
-    return name ?? __('Other spending');
 }
 
 /** "2 concrete + estimated". */
@@ -196,7 +194,7 @@ function RowHeader({
                             row.getIsExpanded() && 'rotate-90',
                         )}
                     />
-                    <span>{groupName(data.group.name)}</span>
+                    <span>{groupName(data.group)}</span>
                     <span className="text-[11px] font-normal text-muted-foreground">
                         {concreteHint(
                             data.group.items.length,
@@ -294,7 +292,7 @@ export function AddLineRow({
     colSpan,
 }: {
     section: 'income' | 'expenses';
-    group: Pick<ForecastGroup, 'name' | 'categoryId'>;
+    group: Pick<ForecastGroup, 'name' | 'categoryId' | 'section'>;
     colSpan: number;
 }) {
     return (
@@ -311,11 +309,11 @@ export function AddLineButton({
     group,
 }: {
     section: 'income' | 'expenses';
-    group: Pick<ForecastGroup, 'name' | 'categoryId'>;
+    group: Pick<ForecastGroup, 'name' | 'categoryId' | 'section'>;
 }) {
     const editor = useForecastEditor();
     const label = __('+ Add something concrete in :group', {
-        group: groupName(group.name),
+        group: groupName(group),
     });
 
     if (editor === null) {
@@ -411,7 +409,9 @@ function editTarget(
                 ? { kind: 'line', line: row.line, month: column.month }
                 : null;
         case 'estimate':
-            return { kind: 'estimate', group: row.group, month: column.month };
+            return isAdjustableEstimate(row.group)
+                ? { kind: 'estimate', group: row.group, month: column.month }
+                : null;
         case 'suggestion':
             return row.suggestion.month === column.month
                 ? suggestedTransfer(row.suggestion, forecast.account.id)
@@ -427,7 +427,7 @@ function rowLabel(row: PlanRow): string {
             return row.line.name;
         case 'estimate':
             return __('Estimated rest of :group', {
-                group: groupName(row.group.name),
+                group: groupName(row.group),
             });
         default:
             return __('Suggested transfer');

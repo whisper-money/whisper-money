@@ -12,6 +12,8 @@ import {
     type ForecastFrequency,
     type ForecastItemVersion,
     type ForecastOccurrence,
+    type MonthlyEstimate,
+    type MonthlyEstimateKind,
     type ProjectedMonth,
     type ProjectionInput,
 } from '@/lib/forecast/types';
@@ -228,26 +230,59 @@ export function withLine(
     };
 }
 
-/** The input with the estimated spend of an account moved by `deltas` (by month). */
+/** Which estimate of the projection input a category's edit moves. */
+export interface EstimateTarget {
+    accountId: string;
+    categoryId: string | null;
+    kind: MonthlyEstimateKind;
+}
+
+/**
+ * Whether the estimate sheet can adjust a group's estimate. An adjustment
+ * without a category always lands on "Other spending" (the server tells
+ * income from spend by the category), so "Other income" cannot be
+ * adjusted yet.
+ */
+export function isAdjustableEstimate(
+    group: Pick<ForecastGroup, 'section' | 'categoryId'>,
+): boolean {
+    return group.section !== 'income' || group.categoryId !== null;
+}
+
+/** Whether a group's estimate is income or spend. */
+export function estimateKind(group: ForecastGroup): MonthlyEstimateKind {
+    return group.estimate?.kind ?? 'expense';
+}
+
+/** The input with one category's estimate on an account moved by `deltas` (by month). */
 export function withEstimateDeltas(
     input: ProjectionInput,
-    accountId: string,
+    target: EstimateTarget,
     deltas: Record<string, number>,
 ): ProjectionInput {
     const estimates = [...(input.estimates ?? [])];
+    const isTarget = (estimate: MonthlyEstimate, month: string) =>
+        estimate.accountId === target.accountId &&
+        estimate.month === month &&
+        (estimate.kind ?? 'expense') === target.kind &&
+        (estimate.categoryId ?? null) === target.categoryId;
 
     for (const [month, delta] of Object.entries(deltas)) {
-        const index = estimates.findIndex(
-            (estimate) =>
-                estimate.accountId === accountId && estimate.month === month,
+        const index = estimates.findIndex((estimate) =>
+            isTarget(estimate, month),
         );
-        const current = index === -1 ? 0 : estimates[index].amount;
-        const next = { accountId, month, amount: Math.max(current + delta, 0) };
 
         if (index === -1) {
-            estimates.push(next);
+            estimates.push({
+                ...target,
+                month,
+                amount: Math.max(delta, 0),
+            });
         } else {
-            estimates[index] = next;
+            estimates[index] = {
+                ...estimates[index],
+                amount: Math.max(estimates[index].amount + delta, 0),
+            };
         }
     }
 
@@ -278,7 +313,8 @@ export function estimateDeltas(
             deltas[candidate] =
                 Math.max(amount - spent, 0) - (estimate?.current?.left ?? 0);
         } else {
-            deltas[candidate] = amount + (estimate?.amounts[candidate] ?? 0);
+            deltas[candidate] =
+                amount - Math.abs(estimate?.amounts[candidate] ?? 0);
         }
     }
 
@@ -509,17 +545,23 @@ export function impactOn(
     );
 }
 
-/** The plan with a group's estimated rest moved by `deltas`, as the table shows it. */
+/** The plan with a group's estimate moved by `deltas`, as the table shows it. */
 export function withEstimateAmounts(
     forecast: ForecastData,
-    groupKey: string,
+    edited: Pick<ForecastGroup, 'key' | 'section'>,
     deltas: Record<string, number>,
 ): ForecastData {
     const currentMonth = forecast.months[0]?.month;
     const adjust = (group: ForecastGroup): ForecastGroup => {
-        if (group.key !== groupKey || group.estimate === null) {
+        if (
+            group.key !== edited.key ||
+            group.section !== edited.section ||
+            group.estimate === null
+        ) {
             return group;
         }
+
+        const sign = group.estimate.kind === 'income' ? 1 : -1;
 
         const amounts = { ...group.estimate.amounts };
         let current = group.estimate.current;
@@ -532,7 +574,7 @@ export function withEstimateAmounts(
                     left: Math.max(current.left + delta, 0),
                 };
             } else if (month !== currentMonth) {
-                amounts[month] = (amounts[month] ?? 0) - delta;
+                amounts[month] = (amounts[month] ?? 0) + sign * delta;
             }
         }
 
@@ -551,6 +593,7 @@ export function withEstimateAmounts(
         ...forecast,
         plan: {
             ...forecast.plan,
+            income: forecast.plan.income.map(adjust),
             expenses: forecast.plan.expenses.map(adjust),
         },
     };

@@ -72,6 +72,22 @@ it('gathers the accounts, their lines and their estimates into the projector\'s 
     expect($projection['accounts'])->toHaveCount(2);
 });
 
+it('projects the lines the user made by hand, not the detected recurring ones', function () {
+    $detected = ForecastItem::factory()->detected()->amount(-5000)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->checking->id,
+        'frequency' => ForecastFrequency::Monthly,
+        'anchor_date' => '2026-01-10',
+    ]);
+
+    $plan = app(ForecastPlanBuilder::class)->build($this->user, $this->user->current_space_id, horizonMonths: 3, startDate: '2026-11-10');
+    $itemIds = array_unique(array_map(fn (Occurrence $occurrence): string => $occurrence->itemId, $plan->input->occurrences));
+
+    expect(array_values($itemIds))->toBe([$this->rent->id, $this->saving->id])
+        ->and($plan->items->modelKeys())->not->toContain($detected->id)
+        ->and(ForecastItem::query()->whereKey($detected->id)->exists())->toBeTrue();
+});
+
 it('narrows to the selected accounts and keeps the transfers that reach them', function () {
     $plan = app(ForecastPlanBuilder::class)->build($this->user, $this->user->current_space_id, [$this->savings->id], 3, '2026-11-10');
 

@@ -333,7 +333,7 @@ function EstimateCurrentCell({
             })}
             subClassName={spent > planned ? 'text-foreground' : undefined}
         >
-            {number(-spent)}
+            {number(estimate.kind === 'income' ? spent : -spent)}
         </PlanCell>
     );
 }

@@ -168,10 +168,12 @@ app is kept in their books.
   only listed for users who have that page. For each account the forecast
   includes in a space (or only the one `account` asks for), in its own
   currency, it gives every month from the one in progress:
-  `income`, `expenses` (of which `estimated_expenses` is the estimated day-to-day
-  spend, the rest planned charges), `min` and `min_date` (the lowest balance),
-  `close`, and `band`, how far the close and the lowest point may drop if the
-  estimated spend comes in high (`pessimistic_min`). A month's `alert_level` is
+  `income` (of which `estimated_income` is estimated from the user's income
+  categories, the rest planned lines), `expenses` (of which `estimated_expenses`
+  is estimated from the spending categories, the rest planned charges), `min`
+  and `min_date` (the lowest balance), `close`, and `band`, how far the close
+  and the lowest point may drop if the estimated spend comes in high or the
+  estimated income low (`pessimistic_min`). A month's `alert_level` is
   `strong` when its lowest balance falls below `alert_threshold` (the minimum the
   user set, else 0; null for anything but a checking or savings account, which
   never alerts: cards, loans, investments, properties),

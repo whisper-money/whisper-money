@@ -3,6 +3,7 @@
 namespace App\Services\Forecast;
 
 use App\Enums\ForecastAlertLevel;
+use App\Enums\ForecastEstimateKind;
 use App\Models\Account;
 use App\Services\ExchangeRateService;
 use App\Services\Forecast\Data\ForecastContext;
@@ -127,11 +128,7 @@ class ForecastAllAccountsPresenter
                 $occurrence->occurrenceDate,
                 $convert($occurrence->accountId, $occurrence->amount, $occurrence->destinationAccountId),
             ), array_values(array_filter($input->occurrences, fn (Occurrence $occurrence): bool => $counted($occurrence->accountId) || $counted($occurrence->destinationAccountId)))),
-            array_map(fn (MonthlyEstimate $estimate): MonthlyEstimate => new MonthlyEstimate(
-                $estimate->accountId,
-                $estimate->month,
-                $convert($estimate->accountId, $estimate->amount),
-            ), array_values(array_filter($input->estimates, fn (MonthlyEstimate $estimate): bool => $counted($estimate->accountId)))),
+            array_map(fn (MonthlyEstimate $estimate): MonthlyEstimate => $estimate->withAmount($convert($estimate->accountId, $estimate->amount)), array_values(array_filter($input->estimates, fn (MonthlyEstimate $estimate): bool => $counted($estimate->accountId)))),
             $input->startDate,
             $input->horizonMonths,
         );
@@ -315,7 +312,8 @@ class ForecastAllAccountsPresenter
 
         foreach ($group['estimates'] as $estimate) {
             $add($estimate['accountId'], $estimate['amounts']);
-            $real -= isset($currencies[$estimate['accountId']]) ? $this->toUserCurrency($context, $currencies[$estimate['accountId']], $estimate['current']['spent'] ?? 0) : 0;
+            $sign = $estimate['kind'] === ForecastEstimateKind::Income->value ? 1 : -1;
+            $real += isset($currencies[$estimate['accountId']]) ? $sign * $this->toUserCurrency($context, $currencies[$estimate['accountId']], $estimate['current']['spent'] ?? 0) : 0;
         }
 
         return ['totals' => $totals, 'current' => ['real' => $real, 'pending' => $pending]];

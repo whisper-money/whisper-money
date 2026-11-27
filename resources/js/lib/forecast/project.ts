@@ -9,6 +9,7 @@ import {
 import type {
     ForecastOccurrence,
     MonthlyEstimate,
+    MonthlyEstimateKind,
     ProjectedMonth,
     Projection,
     ProjectionAccount,
@@ -22,9 +23,10 @@ import type {
  * tests/Fixtures/forecast-parity.json keeps the two in step.
  */
 
-/** The band is 2/5 (40%) of the month's estimate. */
-const BAND_NUMERATOR = 2;
-const BAND_DENOMINATOR = 5;
+/** The band is 2/5 (40%) of the estimated spend plus 1/10 (10%) of the estimated income. */
+const EXPENSE_BAND_NUMERATOR = 2;
+const EXPENSE_BAND_DENOMINATOR = 5;
+const INCOME_BAND_DENOMINATOR = 10;
 
 interface CalendarMonth {
     key: string;
@@ -49,6 +51,7 @@ class MonthAccumulator {
     transfers = 0;
     growth = 0;
     estimated = 0;
+    estimatedIncome = 0;
     readonly balances = new Map<string, number>();
 
     constructor(readonly month: string) {}
@@ -81,22 +84,36 @@ class MonthAccumulator {
         this.transfers += other.transfers;
         this.growth += other.growth;
         this.estimated += other.estimated;
+        this.estimatedIncome += other.estimatedIncome;
+    }
+
+    addEstimate(kind: MonthlyEstimateKind, amount: number): void {
+        if (kind === 'income') {
+            this.estimatedIncome += amount;
+        } else {
+            this.estimated += amount;
+        }
     }
 
     toProjectedMonth(): ProjectedMonth {
         const min = this.min ?? this.close;
-        const band = intdiv(this.estimated * BAND_NUMERATOR, BAND_DENOMINATOR);
+        const band =
+            intdiv(
+                this.estimated * EXPENSE_BAND_NUMERATOR,
+                EXPENSE_BAND_DENOMINATOR,
+            ) + intdiv(this.estimatedIncome, INCOME_BAND_DENOMINATOR);
 
         return {
             month: this.month,
             min,
             minDate: this.minDate,
             close: this.close,
-            income: this.income,
+            income: this.income + this.estimatedIncome,
             expenses: this.concreteExpenses + this.estimated,
             transfers: this.transfers,
             growth: this.growth,
             estimated: this.estimated,
+            estimatedIncome: this.estimatedIncome,
             band,
             pessimisticMin: min - band,
         };
@@ -163,30 +180,126 @@ function flowsByAccount(
     return flows;
 }
 
-/** Estimates by account, then month; projectAccount floors each month's sum at zero. */
+/** Estimates by account, then month. */
 function estimatesByAccount(
     estimates: MonthlyEstimate[],
-): Map<string, Map<string, number>> {
-    const byAccount = new Map<string, Map<string, number>>();
+): Map<string, Map<string, MonthlyEstimate[]>> {
+    const byAccount = new Map<string, Map<string, MonthlyEstimate[]>>();
 
     for (const estimate of estimates) {
         const byMonth = byAccount.get(estimate.accountId) ?? new Map();
-        byMonth.set(
-            estimate.month,
-            (byMonth.get(estimate.month) ?? 0) + estimate.amount,
-        );
+        byMonth.set(estimate.month, [
+            ...(byMonth.get(estimate.month) ?? []),
+            estimate,
+        ]);
         byAccount.set(estimate.accountId, byMonth);
     }
 
     return byAccount;
 }
 
-/** The `day`-th of `days` even shares of the estimate; the shares add up exactly. */
-function estimateShare(estimate: number, day: number, days: number): number {
-    return (
-        Math.floor((estimate * day) / days) -
-        Math.floor((estimate * (day - 1)) / days)
-    );
+/** A day's profile weight; the month's last day also takes the days a short month lacks. */
+function profileWeight(
+    profile: number[],
+    day: number,
+    lastDay: number,
+): number {
+    if (day < lastDay) {
+        return Math.max(profile[day - 1] ?? 0, 0);
+    }
+
+    return profile
+        .slice(day - 1)
+        .reduce((sum, weight) => sum + Math.max(weight, 0), 0);
+}
+
+/**
+ * How an estimate weighs each day the month covers: all on its day for a
+ * lump, by its profile otherwise, evenly when that leaves no weight.
+ */
+function estimateWeights(
+    estimate: MonthlyEstimate,
+    month: CalendarMonth,
+): Map<number, number> {
+    if (estimate.day !== undefined && estimate.day !== null) {
+        const day = Math.max(
+            Math.min(estimate.day, month.lastDay),
+            month.firstDay,
+        );
+
+        return new Map([[day, 1]]);
+    }
+
+    const profile = estimate.profile ?? null;
+    const weights = new Map<number, number>();
+    let total = 0;
+
+    for (let day = month.firstDay; day <= month.lastDay; day++) {
+        const weight =
+            profile === null ? 1 : profileWeight(profile, day, month.lastDay);
+        weights.set(day, weight);
+        total += weight;
+    }
+
+    if (total === 0) {
+        for (const day of weights.keys()) {
+            weights.set(day, 1);
+        }
+    }
+
+    return weights;
+}
+
+/** The amount split by the weights: the running total is floored each day, so the shares add up exactly. */
+function spread(
+    amount: number,
+    weights: Map<number, number>,
+): Map<number, number> {
+    const total = [...weights.values()].reduce((sum, weight) => sum + weight);
+    const shares = new Map<number, number>();
+    let running = 0;
+
+    for (const [day, weight] of weights) {
+        const before = running;
+        running += weight;
+        shares.set(
+            day,
+            intdiv(amount * running, total) - intdiv(amount * before, total),
+        );
+    }
+
+    return shares;
+}
+
+/**
+ * What the month's estimates change the balance by on each day (income up,
+ * spend down), recording their totals on the month. A month never expects
+ * less than nothing from an estimate.
+ */
+function estimatedByDay(
+    month: CalendarMonth,
+    estimates: MonthlyEstimate[],
+    accumulator: MonthAccumulator,
+): Map<number, number> {
+    const byDay = new Map<number, number>();
+
+    for (const estimate of estimates) {
+        const amount = Math.max(estimate.amount, 0);
+        const kind = estimate.kind ?? 'expense';
+        accumulator.addEstimate(kind, amount);
+
+        for (const [day, share] of spread(
+            amount,
+            estimateWeights(estimate, month),
+        )) {
+            byDay.set(
+                day,
+                (byDay.get(day) ?? 0) + (kind === 'income' ? share : -share),
+            );
+        }
+    }
+
+    return byDay;
 }
 
 function projectMonth(
@@ -194,17 +307,16 @@ function projectMonth(
     month: CalendarMonth,
     openingBalance: number,
     flows: Map<string, DailyFlow>,
-    estimate: number,
+    estimates: MonthlyEstimate[],
 ): MonthAccumulator {
     const accumulator = new MonthAccumulator(month.key);
-    accumulator.estimated = estimate;
-    const days = month.lastDay - month.firstDay + 1;
+    const estimated = estimatedByDay(month, estimates, accumulator);
     let balance = openingBalance;
 
     for (let day = month.firstDay; day <= month.lastDay; day++) {
         const date = formatDate(month.year, month.month, day);
         balance += accumulator.addFlow(flows.get(date));
-        balance -= estimateShare(estimate, day - month.firstDay + 1, days);
+        balance += estimated.get(day) ?? 0;
 
         if (day === month.lastDay && month.firstDay === 1) {
             accumulator.growth = intdiv(
@@ -224,7 +336,7 @@ function projectAccount(
     account: ProjectionAccount,
     months: CalendarMonth[],
     flows: Map<string, DailyFlow>,
-    estimates: Map<string, number>,
+    estimates: Map<string, MonthlyEstimate[]>,
 ): MonthAccumulator[] {
     let balance = account.openingBalance;
 
@@ -234,7 +346,7 @@ function projectAccount(
             month,
             balance,
             flows,
-            Math.max(estimates.get(month.key) ?? 0, 0),
+            estimates.get(month.key) ?? [],
         );
         balance = accumulator.close;
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ForecastEstimateKind;
 use App\Services\Forecast\Data\MonthlyEstimate;
 use App\Services\Forecast\Data\Occurrence;
 use App\Services\Forecast\Data\ProjectionAccount;
@@ -122,4 +123,37 @@ it('projects the start month and the horizon after it', function () {
     $result = forecastProjection([new ProjectionAccount('current', 0)], start: '2027-11-20', horizon: 3);
 
     expect(array_column($result['total'], 'month'))->toBe(['2027-11', '2027-12', '2028-01']);
+});
+
+it('lands estimated income whole on its day and adds it to the income', function () {
+    $month = forecastProjection(
+        [new ProjectionAccount('current', 10000)],
+        estimates: [
+            new MonthlyEstimate('current', '2027-04', 250000, ForecastEstimateKind::Income, 'salary', 27),
+            new MonthlyEstimate('current', '2027-04', 30000),
+        ],
+    )['accounts'][0]['months'][0];
+
+    expect($month)->toMatchArray([
+        'min' => -16000,
+        'minDate' => '2027-04-26',
+        'close' => 230000,
+        'income' => 250000,
+        'expenses' => 30000,
+        'estimated' => 30000,
+        'estimatedIncome' => 250000,
+    ]);
+});
+
+it('widens the band by 40% of the estimated spend and 10% of the estimated income', function () {
+    $month = forecastProjection(
+        [new ProjectionAccount('current', 0)],
+        estimates: [
+            new MonthlyEstimate('current', '2027-04', 200000, ForecastEstimateKind::Income, null, 1),
+            new MonthlyEstimate('current', '2027-04', 50000),
+        ],
+    )['accounts'][0]['months'][0];
+
+    expect($month['band'])->toBe(20000 + 20000)
+        ->and($month['pessimisticMin'])->toBe($month['min'] - 40000);
 });

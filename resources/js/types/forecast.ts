@@ -142,15 +142,19 @@ export interface ForecastLine {
 }
 
 export interface ForecastEstimate {
+    /** Income comes in, spend goes out. */
+    kind: 'income' | 'expense';
     basis: 'median' | 'budget' | 'adjustment' | null;
     budgetAmount: number | null;
-    /** Negative amounts by month, the month in progress left out. */
+    /** Signed amounts by month (income positive, spend negative), the month in progress left out. */
     amounts: Record<string, number>;
+    /** The month in progress, all positive: `spent` is what already went out (or came in, for income). */
     current: { spent: number; planned: number; left: number } | null;
 }
 
 export interface ForecastGroup {
     key: string;
+    section: 'income' | 'expenses';
     categoryId: string | null;
     name: string | null;
     icon: string | null;

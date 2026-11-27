@@ -291,6 +291,25 @@ describe('the plan', function () {
             ->and(array_column(collect($plan['income'])->flatMap(fn (array $income): array => $income['items'])->all(), 'name'))->toBe(['Salary']);
     });
 
+    it('estimates income per category, positive, and counts it in the projection', function () {
+        $freelance = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Income, 'name' => 'Freelance']);
+        foreach (['2026-08-15', '2026-09-14', '2026-10-16'] as $date) {
+            forecastCharge($this->checking, $date, 50000, 'INVOICE PAID', $freelance);
+        }
+
+        $props = forecastPageProps($this->actingAs($this->user)->get(route('forecast.index')));
+        $group = collect($props['forecast']['plan']['income'])->firstWhere('key', $freelance->id);
+        $estimate = collect($props['projectionInput']['estimates'])->first(fn (array $estimate): bool => $estimate['categoryId'] === $freelance->id && $estimate['month'] === '2026-12');
+
+        expect($group)->toMatchArray(['section' => 'income', 'name' => 'Freelance'])
+            ->and($group['estimate'])->toMatchArray(['kind' => 'income', 'basis' => 'median'])
+            ->and($group['estimate']['amounts']['2026-12'])->toBe(50000)
+            ->and($group['estimate']['current'])->toBe(['spent' => 0, 'planned' => 50000, 'left' => 50000])
+            ->and(collect($props['forecast']['plan']['expenses'])->pluck('key'))->not->toContain($freelance->id)
+            ->and($estimate)->toMatchArray(['kind' => 'income', 'amount' => 50000, 'day' => 15, 'profile' => null])
+            ->and($props['forecast']['projection'][1])->toMatchArray(['month' => '2026-12', 'income' => 350000, 'estimatedIncome' => 50000]);
+    });
+
     it('puts the transfers apart, signed from the account shown', function () {
         forecastPageLine($this->user, $this->checking, 'To savings', -30000, '2026-01-02', attributes: ['destination_account_id' => $this->savings->id]);
 

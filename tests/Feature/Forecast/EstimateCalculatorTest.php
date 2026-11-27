@@ -2,6 +2,7 @@
 
 use App\Enums\AccountType;
 use App\Enums\ForecastEstimateBasis;
+use App\Enums\ForecastEstimateKind;
 use App\Enums\ForecastFrequency;
 use App\Models\Account;
 use App\Models\Budget;
@@ -19,14 +20,34 @@ use App\Services\Forecast\ForecastPlanBuilder;
 const ESTIMATE_START = '2026-11-10';
 
 /**
- * The estimates of the plan starting on ESTIMATE_START, keyed by
+ * The spend estimates of the plan starting on ESTIMATE_START, keyed by
  * "account|category|month" (an empty category for "Other spending").
  *
  * @return array<string, CategoryEstimate>
  */
 function estimatesFor(User $user, int $horizonMonths = 4): array
 {
+    return estimatesOfKind($user, ForecastEstimateKind::Expense, $horizonMonths);
+}
+
+/**
+ * Like estimatesFor(), for the income estimates ("Other income" under an
+ * empty category).
+ *
+ * @return array<string, CategoryEstimate>
+ */
+function incomeEstimatesFor(User $user, int $horizonMonths = 4): array
+{
+    return estimatesOfKind($user, ForecastEstimateKind::Income, $horizonMonths);
+}
+
+/**
+ * @return array<string, CategoryEstimate>
+ */
+function estimatesOfKind(User $user, ForecastEstimateKind $kind, int $horizonMonths): array
+{
     return collect(app(ForecastPlanBuilder::class)->build($user, $user->current_space_id, horizonMonths: $horizonMonths, startDate: ESTIMATE_START)->categoryEstimates)
+        ->filter(fn (CategoryEstimate $estimate): bool => $estimate->kind === $kind)
         ->keyBy(fn (CategoryEstimate $estimate): string => $estimate->accountId.'|'.$estimate->categoryId.'|'.$estimate->month)
         ->all();
 }
@@ -63,9 +84,10 @@ it('estimates each parent category with the median of the last three complete mo
         ->and($row('2026-11'))->amount->toBe(25000);
 });
 
-it('leaves out what paid a forecast line, was a one-off or moved between the user\'s accounts', function () {
+it('leaves out what paid a line the forecast still projects, was a one-off or moved between the user\'s accounts', function () {
     $matched = forecastCharge($this->account, '2026-10-01', -90000, 'ALQUILER', $this->groceries);
-    ForecastMatch::factory()->create(['transaction_id' => $matched->id]);
+    $yearly = ForecastItem::factory()->frequency(ForecastFrequency::Yearly)->create(['user_id' => $this->user->id, 'account_id' => $this->account->id]);
+    ForecastMatch::factory()->create(['forecast_item_id' => $yearly->id, 'transaction_id' => $matched->id]);
     $oneOff = forecastCharge($this->account, '2026-09-25', -200000, 'BODA', $this->restaurants);
     ForecastExcludedTransaction::factory()->create(['transaction_id' => $oneOff->id]);
     $card = Account::factory()->creditCard()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
@@ -206,4 +228,92 @@ it('takes a parent\'s concrete lines off its budget on any account the budget co
     ]);
 
     expect(estimatesFor($this->user)[$this->account->id.'|'.$this->food->id.'|2026-12']->amount)->toBe(40000);
+});
+
+it('counts what paid a detected recurring line, which no longer projects', function () {
+    $detected = ForecastItem::factory()->detected()->amount(-90000)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => $this->groceries->id,
+        'anchor_date' => '2026-08-01',
+    ]);
+    foreach (['2026-08-01', '2026-09-01', '2026-10-01'] as $date) {
+        ForecastMatch::factory()->create([
+            'forecast_item_id' => $detected->id,
+            'occurrence_date' => $date,
+            'transaction_id' => forecastCharge($this->account, $date, -90000, 'ALQUILER', $this->groceries)->id,
+        ]);
+    }
+
+    expect(estimatesFor($this->user)[$this->account->id.'|'.$this->food->id.'|2026-12']->amount)->toBe(130000);
+});
+
+it('estimates each income category with its median, landing on its usual day', function () {
+    $work = forecastIncomeCategory($this->user);
+    $salary = forecastIncomeCategory($this->user, $work);
+    forecastCharge($this->account, '2026-08-27', 250000, 'NOMINA AGOSTO', $salary);
+    forecastCharge($this->account, '2026-09-25', 260000, 'TRANSFERENCIA NOMINA', $salary);
+    forecastCharge($this->account, '2026-10-29', 250000, 'ABONO NOMINA OCT', $salary);
+
+    $estimates = incomeEstimatesFor($this->user);
+    $december = $estimates[$this->account->id.'|'.$work->id.'|2026-12'];
+
+    expect($december)->amount->toBe(250000)->basis->toBe(ForecastEstimateBasis::Median)->day->toBe(27)->profile->toBeNull()
+        ->and($december->signedAmount())->toBe(250000)
+        ->and($estimates[$this->account->id.'|'.$work->id.'|2026-11'])->amount->toBe(250000)->spent->toBe(0)
+        ->and(estimatesFor($this->user))->not->toHaveKey($this->account->id.'|'.$work->id.'|2026-12');
+});
+
+it('does not add again the income the start month already received', function () {
+    $salary = forecastIncomeCategory($this->user);
+    foreach (['2026-08-05', '2026-09-05', '2026-10-05'] as $date) {
+        forecastCharge($this->account, $date, 200000, 'NOMINA', $salary);
+    }
+    forecastCharge($this->account, '2026-11-05', 180000, 'NOMINA', $salary);
+
+    $november = incomeEstimatesFor($this->user)[$this->account->id.'|'.$salary->id.'|2026-11'];
+
+    expect($november)->amount->toBe(20000)->planned->toBe(200000)->spent->toBe(180000);
+});
+
+it('keeps other income apart from other spending', function () {
+    $tips = forecastIncomeCategory($this->user);
+    foreach (['2026-08-05', '2026-09-05', '2026-10-05'] as $date) {
+        forecastCharge($this->account, $date, 1000, 'PROPINAS', $tips);
+        forecastCharge($this->account, $date, 1500, 'BIZUM RECIBIDO');
+        forecastCharge($this->account, $date, -4000, 'BIZUM ENVIADO');
+    }
+
+    expect(incomeEstimatesFor($this->user)[$this->account->id.'||2026-12'])->amount->toBe(2500)->categoryId->toBeNull()
+        ->and(incomeEstimatesFor($this->user))->not->toHaveKey($this->account->id.'|'.$tips->id.'|2026-12')
+        ->and(estimatesFor($this->user)[$this->account->id.'||2026-12'])->amount->toBe(4000);
+});
+
+it('takes the user\'s adjustment of an income category as income', function () {
+    $salary = forecastIncomeCategory($this->user);
+    foreach (['2026-08-27', '2026-09-27', '2026-10-27'] as $date) {
+        forecastCharge($this->account, $date, 200000, 'NOMINA', $salary);
+    }
+    ForecastEstimateAdjustment::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => $salary->id,
+        'starts_on' => '2027-01-01',
+        'amount' => 230000,
+    ]);
+
+    $estimates = incomeEstimatesFor($this->user);
+
+    expect($estimates[$this->account->id.'|'.$salary->id.'|2027-01'])->amount->toBe(230000)->basis->toBe(ForecastEstimateBasis::Adjustment)->day->toBe(27)
+        ->and($estimates[$this->account->id.'|'.$salary->id.'|2026-12'])->amount->toBe(200000);
+});
+
+it('spreads a spend category by the days it was spent on', function () {
+    $profile = estimatesFor($this->user)[$this->account->id.'|'.$this->food->id.'|2026-12']->profile;
+
+    // 30,000 + 35,000 + 40,000 on the 12th and 15,000 on the 20th.
+    expect($profile)->toHaveCount(31)
+        ->and(array_sum($profile))->toBe(10000)
+        ->and($profile[11])->toBe(8750)
+        ->and($profile[19])->toBe(1250);
 });

@@ -3,6 +3,7 @@
 namespace App\Services\Forecast;
 
 use App\Models\ForecastExcludedTransaction;
+use App\Models\ForecastItem;
 use App\Models\ForecastMatch;
 use App\Models\Transaction;
 use App\Models\User;
@@ -43,6 +44,25 @@ class ForecastHistory
     {
         return $this->query($user, $spaceId, $from, $to, $accountIds)
             ->whereNotIn('transactions.id', ForecastMatch::query()->select('transaction_id'))
+            ->whereNotIn('transactions.id', ForecastExcludedTransaction::query()->select('transaction_id'))
+            ->get();
+    }
+
+    /**
+     * Like transactions(), leaving out what the category estimates must not
+     * count: what paid a line the forecast still projects (it is planned on
+     * its own) and what the user marked a one-off. What paid a detected
+     * recurring line counts, since those lines no longer project.
+     *
+     * @param  list<string>|null  $accountIds  Null reads every account.
+     * @return Collection<int, Transaction>
+     */
+    public function estimableTransactions(User $user, string $spaceId, string $from, string $to, ?array $accountIds = null): Collection
+    {
+        return $this->query($user, $spaceId, $from, $to, $accountIds)
+            ->whereNotIn('transactions.id', ForecastMatch::query()
+                ->whereIn('forecast_item_id', ForecastItem::query()->where('user_id', $user->id)->projecting()->select('id'))
+                ->select('transaction_id'))
             ->whereNotIn('transactions.id', ForecastExcludedTransaction::query()->select('transaction_id'))
             ->get();
     }

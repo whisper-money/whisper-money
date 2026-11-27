@@ -58,11 +58,23 @@ export interface ProjectionAccount {
     minimumBalance?: number | null;
 }
 
-/** Spend expected beyond the concrete lines, in positive minor units, spread evenly over the month. */
+export type MonthlyEstimateKind = 'income' | 'expense';
+
+/**
+ * Money a parent category is expected to move beyond the concrete lines, in
+ * positive minor units: spend for an expense estimate (the default), money
+ * in for an income one. Income lands whole on `day`; spend follows
+ * `profile` (the weight of each day of the month, 31 entries); with neither
+ * it is spread evenly over the month. See MonthlyEstimate.php.
+ */
 export interface MonthlyEstimate {
     accountId: string;
     month: string;
     amount: number;
+    kind?: MonthlyEstimateKind;
+    categoryId?: string | null;
+    day?: number | null;
+    profile?: number[] | null;
 }
 
 export interface ProjectionInput {
@@ -79,15 +91,18 @@ export interface ProjectedMonth {
     min: number;
     minDate: string | null;
     close: number;
-    /** Income, transfers left out. */
+    /** Concrete income plus the estimated income, transfers left out. */
     income: number;
     /** Concrete spend plus the estimated spend, transfers left out. */
     expenses: number;
     /** Net money moved in (positive) or out (negative) by transfers. */
     transfers: number;
     growth: number;
+    /** The estimated spend. */
     estimated: number;
-    /** 40% of the month's estimate: the uncertainty of the estimate alone. */
+    /** The estimated income. */
+    estimatedIncome: number;
+    /** 40% of the estimated spend plus 10% of the estimated income: the uncertainty of the estimates alone. */
     band: number;
     pessimisticMin: number;
 }

@@ -66,6 +66,16 @@ class ForecastItemFactory extends Factory
         ]);
     }
 
+    /**
+     * A recurring line the review created from the history.
+     */
+    public function detected(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'source' => ForecastItemSource::Detected,
+        ]);
+    }
+
     public function archived(): static
     {
         return $this->state(fn (array $attributes) => [

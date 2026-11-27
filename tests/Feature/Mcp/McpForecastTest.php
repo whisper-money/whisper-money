@@ -129,8 +129,8 @@ it('gives a Pro user the month in progress and the twelve after it, with the ale
         ->and($account['months'][12]['month'])->toBe('2027-11')
         ->and($account['alert'])->toMatchArray(['level' => 'strong', 'strong_month' => '2027-04', 'strong_min' => -50000, 'strong_min_date' => '2027-04-10', 'locked_strong_month_count' => null])
         ->and($account['summary'])->toMatchArray(['lowest_month' => '2027-04', 'lowest_min' => -50000, 'end_month' => '2027-11'])
-        ->and($months['2027-04'])->toMatchArray(['alert_level' => 'strong', 'income' => 300000, 'min' => -50000, 'min_date' => '2027-04-10', 'alert_causes' => [['name' => 'Car insurance', 'amount' => 700000]]])
-        ->and($months['2027-04'])->toHaveKeys(['expenses', 'estimated_expenses', 'transfers', 'close', 'band', 'pessimistic_min'])
+        ->and($months['2027-04'])->toMatchArray(['alert_level' => 'strong', 'income' => 300000, 'estimated_income' => 0, 'min' => -50000, 'min_date' => '2027-04-10', 'alert_causes' => [['name' => 'Car insurance', 'amount' => 700000]]])
+        ->and($months['2027-04'])->toHaveKeys(['expenses', 'estimated_expenses', 'estimated_income', 'transfers', 'close', 'band', 'pessimistic_min'])
         ->and($months['2026-12'])->toMatchArray(['alert_level' => 'ok', 'alert_causes' => []]);
 });
 

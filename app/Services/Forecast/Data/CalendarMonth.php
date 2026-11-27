@@ -26,14 +26,6 @@ final readonly class CalendarMonth
     }
 
     /**
-     * How many days of the month the projection covers.
-     */
-    public function days(): int
-    {
-        return $this->lastDay - $this->firstDay + 1;
-    }
-
-    /**
      * Whether the projection covers the month from its 1st.
      */
     public function isWhole(): bool

@@ -12,15 +12,17 @@ use App\Services\Forecast\Data\ProjectionInput;
  * Projects each account's balance day by day from its opening balance, and
  * sums them into a total, month by month.
  *
- * Each day takes that day's occurrences and an even share of the month's
- * estimated spend (in the start month, what is left of it over the days left);
- * a transfer takes money from one account and gives it to the other, so it
+ * Each day takes that day's occurrences and its share of the month's
+ * estimates (in the start month, of what is left of them over the days left):
+ * an income estimate lands whole on its day, a spend estimate is spread by its
+ * day profile, or evenly without one (see MonthlyEstimate); a transfer takes money from one account and gives it to the other, so it
  * leaves the total untouched. An account with a yearly rate grows by a twelfth
  * of it on the close of every whole month it covers (the month the projection
  * starts in is partial, so it does not grow). All in integer minor units, so
  * the TypeScript port in resources/js/lib/forecast/project.ts gives the same
  * figures, which tests/Fixtures/forecast-parity.json checks. Exact while
- * amounts times 31 (or times a rate in basis points) stay below 2^53.
+ * amounts times a profile's total weight (or times a rate in basis points)
+ * stay below 2^53.
  *
  * The forecast pages, jobs and MCP tool of the later phases call it; until
  * then only the tests do.
@@ -84,7 +86,7 @@ final class ForecastProjector
     /**
      * @param  list<CalendarMonth>  $months
      * @param  array<string, array{income: int, expenses: int, transfers: int}>  $flows
-     * @param  array<string, int>  $estimates
+     * @param  array<string, list<MonthlyEstimate>>  $estimates  By month.
      * @return list<MonthAccumulator>
      */
     private function projectAccount(ProjectionAccount $account, array $months, array $flows, array $estimates): array
@@ -93,7 +95,7 @@ final class ForecastProjector
         $accumulators = [];
 
         foreach ($months as $month) {
-            $accumulator = $this->projectMonth($account, $month, $balance, $flows, max($estimates[$month->key] ?? 0, 0));
+            $accumulator = $this->projectMonth($account, $month, $balance, $flows, $estimates[$month->key] ?? []);
             $balance = $accumulator->close;
             $accumulators[] = $accumulator;
         }
@@ -103,16 +105,17 @@ final class ForecastProjector
 
     /**
      * @param  array<string, array{income: int, expenses: int, transfers: int}>  $flows
+     * @param  list<MonthlyEstimate>  $estimates
      */
-    private function projectMonth(ProjectionAccount $account, CalendarMonth $month, int $balance, array $flows, int $estimate): MonthAccumulator
+    private function projectMonth(ProjectionAccount $account, CalendarMonth $month, int $balance, array $flows, array $estimates): MonthAccumulator
     {
         $accumulator = new MonthAccumulator($month->key);
-        $accumulator->estimated = $estimate;
+        $estimated = $this->estimatedByDay($month, $estimates, $accumulator);
 
         for ($day = $month->firstDay; $day <= $month->lastDay; $day++) {
             $date = $month->date($day);
             $balance += $accumulator->addFlow($flows[$date] ?? null);
-            $balance -= $this->estimateShare($estimate, $day - $month->firstDay + 1, $month->days());
+            $balance += $estimated[$day] ?? 0;
 
             if ($day === $month->lastDay && $month->isWhole()) {
                 $accumulator->growth = $this->monthlyGrowth($balance, $account->annualRateBps);
@@ -135,12 +138,83 @@ final class ForecastProjector
     }
 
     /**
-     * The estimate's share for the `$day`-th of `$days` days: the running
-     * total is floored each day, so the shares are whole and add up exactly.
+     * What the month's estimates change the balance by on each day it
+     * covers (income up, spend down), recording their totals on the month.
+     * A month never expects less than nothing from an estimate.
+     *
+     * @param  list<MonthlyEstimate>  $estimates
+     * @return array<int, int> By day of the month.
      */
-    private function estimateShare(int $estimate, int $day, int $days): int
+    private function estimatedByDay(CalendarMonth $month, array $estimates, MonthAccumulator $accumulator): array
     {
-        return (int) (floor($estimate * $day / $days) - floor($estimate * ($day - 1) / $days));
+        $byDay = [];
+
+        foreach ($estimates as $estimate) {
+            $amount = max($estimate->amount, 0);
+            $sign = $estimate->isIncome() ? 1 : -1;
+            $accumulator->addEstimate($estimate->kind, $amount);
+
+            foreach ($this->spread($amount, $this->weights($estimate, $month)) as $day => $share) {
+                $byDay[$day] = ($byDay[$day] ?? 0) + $sign * $share;
+            }
+        }
+
+        return $byDay;
+    }
+
+    /**
+     * How an estimate weighs each day the month covers: all on its day for
+     * a lump, by its profile otherwise, evenly when that leaves no weight.
+     *
+     * @return array<int, int> By day of the month.
+     */
+    private function weights(MonthlyEstimate $estimate, CalendarMonth $month): array
+    {
+        if ($estimate->day !== null) {
+            return [max(min($estimate->day, $month->lastDay), $month->firstDay) => 1];
+        }
+
+        $days = range($month->firstDay, $month->lastDay);
+        $profile = $estimate->profile;
+        $weights = array_combine($days, array_map(
+            fn (int $day): int => $profile === null ? 1 : $this->profileWeight($profile, $day, $month->lastDay),
+            $days,
+        ));
+
+        return array_sum($weights) > 0 ? $weights : array_fill_keys($days, 1);
+    }
+
+    /**
+     * A day's profile weight; the month's last day also takes the days a
+     * short month lacks.
+     *
+     * @param  list<int>  $profile
+     */
+    private function profileWeight(array $profile, int $day, int $lastDay): int
+    {
+        return $day < $lastDay ? max($profile[$day - 1] ?? 0, 0) : array_sum(array_map(fn (int $weight): int => max($weight, 0), array_slice($profile, $day - 1)));
+    }
+
+    /**
+     * The amount split by the weights: the running total is floored each
+     * day, so the shares are whole and add up exactly.
+     *
+     * @param  array<int, int>  $weights
+     * @return array<int, int>
+     */
+    private function spread(int $amount, array $weights): array
+    {
+        $total = array_sum($weights);
+        $running = 0;
+        $shares = [];
+
+        foreach ($weights as $day => $weight) {
+            $before = $running;
+            $running += $weight;
+            $shares[$day] = intdiv($amount * $running, $total) - intdiv($amount * $before, $total);
+        }
+
+        return $shares;
     }
 
     /**
@@ -182,18 +256,15 @@ final class ForecastProjector
     }
 
     /**
-     * Adjustments may lower an estimate, but a month never spends less than
-     * nothing: projectAccount() floors each month's sum at zero.
-     *
      * @param  list<MonthlyEstimate>  $estimates
-     * @return array<string, array<string, int>> Amount by account, then month.
+     * @return array<string, array<string, list<MonthlyEstimate>>> By account, then month.
      */
     private function estimatesByAccount(array $estimates): array
     {
         $byAccount = [];
 
         foreach ($estimates as $estimate) {
-            $byAccount[$estimate->accountId][$estimate->month] = ($byAccount[$estimate->accountId][$estimate->month] ?? 0) + $estimate->amount;
+            $byAccount[$estimate->accountId][$estimate->month][] = $estimate;
         }
 
         return $byAccount;

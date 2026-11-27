@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Enums\CategoryType;
 use App\Enums\ForecastAlertLevel;
 use App\Enums\ForecastFrequency;
 use App\Features\Forecast;
@@ -298,7 +299,7 @@ describe('the cashflow card', function () {
         entryCardsLine($this->user, $dollars, 'Dollar fee', -500, '2026-01-28');
         $water = entryCardsLine($this->user, $this->checking, 'Water', -2000, '2026-01-27');
         ForecastMatch::factory()->create(['forecast_item_id' => $water->id, 'occurrence_date' => '2026-11-27']);
-        $groceries = Category::factory()->create(['user_id' => $this->user->id, 'name' => 'Groceries']);
+        $groceries = Category::factory()->create(['user_id' => $this->user->id, 'name' => 'Groceries', 'type' => CategoryType::Expense]);
         ForecastEstimateAdjustment::factory()->create([
             'user_id' => $this->user->id,
             'account_id' => $this->checking->id,
@@ -316,7 +317,7 @@ describe('the cashflow card', function () {
                 ['name' => 'Freelance', 'date' => '2026-11-29', 'amount' => 50000],
                 ['name' => 'To broker', 'date' => '2026-11-30', 'amount' => -20000],
             ])
-            ->estimates->toBe([['name' => 'Groceries', 'amount' => -1300]])
+            ->estimates->toBe([['name' => 'Groceries', 'kind' => 'expense', 'amount' => -1300]])
             ->endBalance->toBe(100000 + 900000 - 4000 + 50000 - 20000 - 1300);
     });
 });

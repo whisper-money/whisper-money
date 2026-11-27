@@ -5,6 +5,20 @@ import {
     type ForecastPlan,
     type ForecastTransferSuggestion,
 } from '@/types/forecast';
+import { __ } from '@/utils/i18n';
+
+/** A group's name: its category's, or "Other income" / "Other spending". */
+export function groupName(
+    group: Pick<ForecastGroup, 'name' | 'section'>,
+): string {
+    if (group.name !== null) {
+        return group.name;
+    }
+
+    return group.section === 'income'
+        ? __('Other income')
+        : __('Other spending');
+}
 
 /**
  * The rows of the forecast plan table, as a tree TanStack Table expands
@@ -156,8 +170,10 @@ export function groupCurrentTotal(group: ForecastGroup): GroupCurrentTotal {
         0,
     );
 
+    const spent = group.estimate?.current?.spent ?? 0;
+
     return {
-        real: lines - (group.estimate?.current?.spent ?? 0),
+        real: lines + (group.estimate?.kind === 'income' ? spent : -spent),
         pending: group.items.some((line) => line.current.status === 'pending'),
     };
 }

@@ -35,7 +35,7 @@ class ForecastRestOfMonth
     /**
      * Null without a forecast line or an account to show.
      *
-     * @return array{month: string, currencyCode: string, lines: list<array{name: string, date: string, amount: int}>, estimates: list<array{name: string|null, amount: int}>, endBalance: int}|null
+     * @return array{month: string, currencyCode: string, lines: list<array{name: string, date: string, amount: int}>, estimates: list<array{name: string|null, kind: string, amount: int}>, endBalance: int}|null
      */
     public function for(User $user): ?array
     {
@@ -142,28 +142,30 @@ class ForecastRestOfMonth
     }
 
     /**
-     * What is left of each parent category's estimate, largest first, as a
-     * signed expense. A null name is "Other spending".
+     * What is left of each parent category's estimate, signed (income
+     * positive, spend negative), largest first. A null name is "Other
+     * income" or "Other spending", as `kind` says.
      *
      * @param  list<CategoryEstimate>  $estimates
-     * @return list<array{name: string|null, amount: int}>
+     * @return list<array{name: string|null, kind: string, amount: int}>
      */
     private function estimates(User $user, array $estimates): array
     {
-        $byCategory = [];
+        $rows = [];
 
         foreach ($estimates as $estimate) {
-            $byCategory[$estimate->categoryId ?? ''] = ($byCategory[$estimate->categoryId ?? ''] ?? 0) + $estimate->amount;
+            $key = $estimate->kind->value.':'.($estimate->categoryId ?? '');
+            $rows[$key] ??= ['categoryId' => $estimate->categoryId, 'kind' => $estimate->kind->value, 'amount' => 0];
+            $rows[$key]['amount'] += $estimate->signedAmount();
         }
 
-        $byCategory = array_filter($byCategory);
-        arsort($byCategory);
-        $names = Category::query()->where('user_id', $user->id)->whereKey(array_filter(array_keys($byCategory)))->pluck('name', 'id');
+        $rows = array_filter($rows, fn (array $row): bool => $row['amount'] !== 0);
+        usort($rows, fn (array $a, array $b): int => abs($b['amount']) <=> abs($a['amount']));
+        $names = Category::query()->where('user_id', $user->id)->whereKey(array_filter(array_column($rows, 'categoryId')))->pluck('name', 'id');
 
         return array_map(
-            fn (string $categoryId, int $amount): array => ['name' => $categoryId === '' ? null : $names->get($categoryId), 'amount' => -$amount],
-            array_keys($byCategory),
-            array_values($byCategory),
+            fn (array $row): array => ['name' => $row['categoryId'] === null ? null : $names->get($row['categoryId']), 'kind' => $row['kind'], 'amount' => $row['amount']],
+            $rows,
         );
     }
 

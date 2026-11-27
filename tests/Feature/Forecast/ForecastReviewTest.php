@@ -207,7 +207,7 @@ describe('confirming', function () {
             ->and($matches->every(fn (ForecastMatch $match): bool => $match->matched_by === ForecastMatchedBy::User && $match->deviation === 0))->toBeTrue();
     });
 
-    it('does not count the confirmed charges again in the estimated rest', function () {
+    it('keeps the category estimate once a charge is confirmed: a detected line no longer projects', function () {
         $housingEstimate = fn (): int => collect(app(ForecastPlanBuilder::class)->build($this->user, $this->spaceId, null, 2)->categoryEstimates)
             ->where('categoryId', $this->housing->id)
             ->where('month', '2026-12')
@@ -220,8 +220,8 @@ describe('confirming', function () {
         $plan = app(ForecastPlanBuilder::class)->build($this->user, $this->spaceId, null, 2);
         $rentInDecember = collect($plan->input->occurrences)->filter(fn ($occurrence): bool => str_starts_with($occurrence->date, '2026-12'))->sum('amount');
 
-        expect($housingEstimate())->toBe(0)
-            ->and($rentInDecember)->toBe(-85000);
+        expect($housingEstimate())->toBe(85000)
+            ->and($rentInDecember)->toBe(0);
     });
 
     it('recognises the next charge by its description', function () {

@@ -54,6 +54,7 @@ trait PresentsForecast
             'income' => $month['income'],
             'expenses' => $month['expenses'],
             'estimated_expenses' => $month['estimated'],
+            'estimated_income' => $month['estimatedIncome'],
             'transfers' => $month['transfers'],
             'min' => $month['min'],
             'min_date' => $month['minDate'],

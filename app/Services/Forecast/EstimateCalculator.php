@@ -2,8 +2,11 @@
 
 namespace App\Services\Forecast;
 
+use App\Enums\CategoryType;
 use App\Enums\ForecastEstimateBasis;
+use App\Enums\ForecastEstimateKind;
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\ForecastEstimateAdjustment;
 use App\Models\Transaction;
 use App\Models\User;
@@ -14,22 +17,30 @@ use App\Support\Money;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * The estimated rest of each parent category on each account: the spend no
- * concrete line covers, month by month over the horizon.
+ * What each parent category of the user is expected to move on each
+ * account, income and spend alike, month by month over the horizon: the
+ * core of the forecast.
  *
- * It is the median of the three complete months before the start, over the
- * spend that paid no forecast line, was not marked a one-off and is not a
- * transfer between the user's accounts. Only the months since the account's
- * first transaction count, so a young account is not read as spending
- * nothing. A parent with a budget that fits it (see ForecastBudgetTargets)
- * takes the budget instead, less the concrete lines of that parent in the
- * month, never below zero; the budget covers every account in the user's
- * currency, so each takes the share of it it spent over those months. A
- * parent whose median is under 30 a month in the account's currency is too
- * small for a row: it joins "Other spending" (`categoryId` null) with the
- * uncategorized spend. An adjustment the user made replaces the figure for
- * the months it covers, the latest one winning. In the start month the
- * estimate is what is left of it after what was already spent there.
+ * Each figure is the median of the three complete months before the start,
+ * over every transaction except transfers between the user's accounts, the
+ * ones marked a one-off and the ones that paid a line the forecast still
+ * projects (yearly and one-off lines the user made, see
+ * ForecastItem::projecting(); those add on top of the estimate). Only the
+ * months since the account's first transaction count, so a young account is
+ * not read as moving nothing. Income and spend are kept apart, each
+ * transaction going to the side its category says (uncategorized money by
+ * its sign). A spend parent with a budget that fits it (see
+ * ForecastBudgetTargets) takes the budget instead, less the concrete lines
+ * of that parent in the month, never below zero; the budget covers every
+ * account in the user's currency, so each takes the share of it it spent
+ * over those months. A parent whose median is under 30 a month in the
+ * account's currency is too small for a row: it joins "Other income" or
+ * "Other spending" (`categoryId` null) with the uncategorized money of its
+ * side. An adjustment the user made replaces the figure for the months it
+ * covers, the latest one winning; it is income when its category is. In
+ * the start month the estimate is what is left of it after what already
+ * came in or went out there. Each row also says when in the month it lands
+ * (see EstimateTiming).
  */
 class EstimateCalculator
 {
@@ -38,7 +49,8 @@ class EstimateCalculator
     private const SMALL_ROW_MAJOR_UNITS = 30;
 
     /**
-     * The bucket key of "Other spending", which has no category.
+     * The parent key of "Other income" and "Other spending", which have no
+     * category.
      */
     private const OTHER = '';
 
@@ -46,6 +58,7 @@ class EstimateCalculator
         private readonly ForecastHistory $history,
         private readonly ForecastBudgetTargets $budgets,
         private readonly TransferPairer $pairer,
+        private readonly EstimateTiming $timing,
     ) {}
 
     /**
@@ -59,21 +72,43 @@ class EstimateCalculator
         $parents = $this->history->parentCategories($user);
         $months = $this->monthKeys($startDate, $horizonMonths);
         $pastMonths = $this->pastMonthsByAccount($user, $accounts, $startDate);
-        $spend = $this->spendByBucket($user, $spaceId, $accounts, $startDate, $parents);
-        $budgetShares = $this->budgetShares($user, $spaceId, $accounts, $spend, $parents, $pastMonths);
+        $flows = $this->flowsByBucket($user, $spaceId, $accounts, $startDate, $parents);
+        $budgetShares = $this->budgetShares($user, $spaceId, $accounts, $this->spendByParent($flows), $parents, $pastMonths);
         $concrete = $this->concreteSpendByParent($occurrences, $itemCategories, $parents, $this->inUserCurrency($user, $accounts)->modelKeys());
         $adjustments = $this->adjustments($user, $spaceId, $accounts, $parents);
         $estimates = [];
 
         foreach ($accounts as $account) {
-            $rows = $this->rows($account, $spend[$account->id] ?? [], $budgetShares, $adjustments[$account->id] ?? [], $pastMonths[$account->id], $months[0]);
+            $rows = $this->rows($account, $flows[$account->id] ?? [], $budgetShares, $adjustments[$account->id] ?? [], $pastMonths[$account->id], $months[0]);
 
             foreach ($rows as $bucket => $row) {
-                array_push($estimates, ...$this->estimatesFor($account->id, (string) $bucket, $row, $months, $concrete[$bucket] ?? [], $adjustments[$account->id][$bucket] ?? []));
+                $parent = self::parentOf((string) $bucket);
+                $timing = $this->timingOf($row, $pastMonths[$account->id]);
+                $byMonth = $row->kind === ForecastEstimateKind::Income ? [] : ($concrete[$parent] ?? []);
+
+                array_push($estimates, ...$this->estimatesFor($account->id, $parent, $row, $timing, $months, $byMonth, $adjustments[$account->id][$bucket] ?? []));
             }
         }
 
         return $estimates;
+    }
+
+    /**
+     * The key of a row: its side and its parent category (OTHER for none).
+     */
+    private static function bucket(ForecastEstimateKind $kind, string $parent): string
+    {
+        return $kind->value.':'.$parent;
+    }
+
+    private static function kindOf(string $bucket): ForecastEstimateKind
+    {
+        return ForecastEstimateKind::from((string) strstr($bucket, ':', true));
+    }
+
+    private static function parentOf(string $bucket): string
+    {
+        return substr((string) strstr($bucket, ':'), 1);
     }
 
     /**
@@ -105,27 +140,68 @@ class EstimateCalculator
     }
 
     /**
-     * Each account's spend by parent category (OTHER for uncategorized) and
-     * month, in its owner's share: positive spend, lowered by refunds.
+     * Each account's money by row (side and parent category) and by month
+     * and day, in its owner's share: positive spend lowered by refunds on
+     * the spend side, positive money in on the income side.
      *
      * @param  Collection<int, Account>  $accounts
      * @param  array<string, string>  $parents
-     * @return array<string, array<string, array<string, int>>> By account, bucket, then `Y-m` month.
+     * @return array<string, array<string, array<string, array<int, int>>>> By account, row, `Y-m` month, then day.
      */
-    private function spendByBucket(User $user, string $spaceId, Collection $accounts, string $startDate, array $parents): array
+    private function flowsByBucket(User $user, string $spaceId, Collection $accounts, string $startDate, array $parents): array
     {
-        $transactions = $this->history->unplannedTransactions($user, $spaceId, ForecastCalendar::monthStart($startDate, -self::MEDIAN_MONTHS), $startDate, $accounts->modelKeys());
+        $transactions = $this->history->estimableTransactions($user, $spaceId, ForecastCalendar::monthStart($startDate, -self::MEDIAN_MONTHS), $startDate, $accounts->modelKeys());
         $legs = $this->pairer->pair($transactions);
-        $spend = [];
+        $flows = [];
 
         foreach ($transactions as $transaction) {
-            if (! $transaction->isExpenseSide() || ($legs[$transaction->id] ?? null)?->isInternal()) {
+            $kind = $this->sideOf($transaction);
+
+            if ($kind === null || ($legs[$transaction->id] ?? null)?->isInternal()) {
                 continue;
             }
 
-            $bucket = $transaction->category_id === null ? self::OTHER : ($parents[$transaction->category_id] ?? self::OTHER);
-            $month = ForecastCalendar::monthKey($transaction->transaction_date->toDateString());
-            $spend[$transaction->account_id][$bucket][$month] = ($spend[$transaction->account_id][$bucket][$month] ?? 0) - $transaction->account->shareOfAmount($transaction->amount);
+            $bucket = self::bucket($kind, $transaction->category_id === null ? self::OTHER : ($parents[$transaction->category_id] ?? self::OTHER));
+            $date = $transaction->transaction_date->toDateString();
+            $month = ForecastCalendar::monthKey($date);
+            $day = (int) substr($date, 8, 2);
+            $share = $transaction->account->shareOfAmount($transaction->amount);
+            $flows[$transaction->account_id][$bucket][$month][$day] = ($flows[$transaction->account_id][$bucket][$month][$day] ?? 0) + ($kind === ForecastEstimateKind::Income ? $share : -$share);
+        }
+
+        return $flows;
+    }
+
+    /**
+     * Which side a transaction counts on, or null for one on neither (a
+     * transfer, savings or investment category).
+     */
+    private function sideOf(Transaction $transaction): ?ForecastEstimateKind
+    {
+        if ($transaction->isExpenseSide()) {
+            return ForecastEstimateKind::Expense;
+        }
+
+        return $transaction->isIncomeSide() ? ForecastEstimateKind::Income : null;
+    }
+
+    /**
+     * Each account's spend by parent category and month, what budgets are
+     * split by.
+     *
+     * @param  array<string, array<string, array<string, array<int, int>>>>  $flows
+     * @return array<string, array<string, array<string, int>>> By account, parent, then `Y-m` month.
+     */
+    private function spendByParent(array $flows): array
+    {
+        $spend = [];
+
+        foreach ($flows as $accountId => $buckets) {
+            foreach ($buckets as $bucket => $byMonth) {
+                if (self::kindOf((string) $bucket) === ForecastEstimateKind::Expense) {
+                    $spend[$accountId][self::parentOf((string) $bucket)] = array_map(array_sum(...), $byMonth);
+                }
+            }
         }
 
         return $spend;
@@ -215,7 +291,9 @@ class EstimateCalculator
     }
 
     /**
-     * The user's adjustments by account and bucket, latest start first.
+     * The user's adjustments by account and row, latest start first. One
+     * on an income category adjusts its income row; any other (or none),
+     * its spend row.
      *
      * @param  Collection<int, Account>  $accounts
      * @param  array<string, string>  $parents
@@ -231,41 +309,70 @@ class EstimateCalculator
             ->whereIn('account_id', $accounts->modelKeys())
             ->orderByDesc('starts_on')
             ->get();
+        $incomeParents = array_flip($this->incomeParents($user, $parents));
 
         foreach ($adjustments as $adjustment) {
-            $bucket = $adjustment->category_id === null ? self::OTHER : ($parents[$adjustment->category_id] ?? self::OTHER);
-            $byBucket[$adjustment->account_id][$bucket][] = $adjustment;
+            $parent = $adjustment->category_id === null ? self::OTHER : ($parents[$adjustment->category_id] ?? self::OTHER);
+            $kind = isset($incomeParents[$parent]) ? ForecastEstimateKind::Income : ForecastEstimateKind::Expense;
+            $byBucket[$adjustment->account_id][self::bucket($kind, $parent)][] = $adjustment;
         }
 
         return $byBucket;
     }
 
     /**
-     * The rows of one account by bucket. Small median rows fold into OTHER
-     * unless the user adjusted them.
+     * The user's parent categories of the income type.
      *
-     * @param  array<string, array<string, int>>  $spend
+     * @param  array<string, string>  $parents
+     * @return list<string>
+     */
+    private function incomeParents(User $user, array $parents): array
+    {
+        return Category::query()
+            ->where('user_id', $user->id)
+            ->whereIn('id', array_values(array_unique($parents)))
+            ->where('type', CategoryType::Income)
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
+     * The rows of one account by bucket. Small median rows fold into the
+     * "Other" row of their side unless the user adjusted them.
+     *
+     * @param  array<string, array<string, array<int, int>>>  $flows  By row, `Y-m` month, then day.
      * @param  array<string, array{limit: int, shares: array<string, float>}>  $budgetShares
      * @param  array<string, list<ForecastEstimateAdjustment>>  $adjustments
      * @param  list<string>  $pastMonths
      * @return array<string, EstimateRow>
      */
-    private function rows(Account $account, array $spend, array $budgetShares, array $adjustments, array $pastMonths, string $startMonth): array
+    private function rows(Account $account, array $flows, array $budgetShares, array $adjustments, array $pastMonths, string $startMonth): array
     {
-        $budgeted = array_filter($budgetShares, fn (array $budget): bool => isset($budget['shares'][$account->id]));
-        $buckets = array_unique(array_map(strval(...), [...array_keys($spend), ...array_keys($adjustments), ...array_keys($budgeted)]));
+        $budgeted = [];
+
+        foreach ($budgetShares as $parent => $budget) {
+            if (isset($budget['shares'][$account->id])) {
+                $budgeted[self::bucket(ForecastEstimateKind::Expense, (string) $parent)] = $budget;
+            }
+        }
+
+        $buckets = array_unique(array_map(strval(...), [...array_keys($flows), ...array_keys($adjustments), ...array_keys($budgeted)]));
         $smallRow = Money::toMinor(self::SMALL_ROW_MAJOR_UNITS, $account->currency_code);
         $rows = [];
 
         foreach ($buckets as $bucket) {
+            $byMonth = array_map(array_sum(...), $flows[$bucket] ?? []);
+            $kind = self::kindOf($bucket);
             $row = new EstimateRow(
-                $this->median($spend[$bucket] ?? [], $pastMonths),
-                max($spend[$bucket][$startMonth] ?? 0, 0),
+                $this->median($byMonth, $pastMonths),
+                max($byMonth[$startMonth] ?? 0, 0),
                 $budgeted[$bucket]['limit'] ?? null,
                 $budgeted[$bucket]['shares'][$account->id] ?? null,
+                $kind,
+                array_intersect_key($flows[$bucket] ?? [], array_flip($pastMonths)),
             );
             $folds = $row->budgetLimit === null && $row->median < $smallRow && ! isset($adjustments[$bucket]);
-            $target = $folds ? self::OTHER : $bucket;
+            $target = $folds ? self::bucket($kind, self::OTHER) : $bucket;
 
             $rows[$target] = isset($rows[$target]) ? $rows[$target]->foldedWith($row) : $row;
         }
@@ -274,12 +381,29 @@ class EstimateCalculator
     }
 
     /**
+     * When in the month a row lands: income on its usual day, spend by its
+     * day profile.
+     *
+     * @param  list<string>  $pastMonths
+     * @return array{day: int|null, profile: list<int>|null}
+     */
+    private function timingOf(EstimateRow $row, array $pastMonths): array
+    {
+        if ($row->kind === ForecastEstimateKind::Income) {
+            return ['day' => $this->timing->incomeDay($row->byMonthAndDay, $pastMonths), 'profile' => null];
+        }
+
+        return ['day' => null, 'profile' => $this->timing->expenseProfile($row->byMonthAndDay, $pastMonths)];
+    }
+
+    /**
+     * @param  array{day: int|null, profile: list<int>|null}  $timing
      * @param  list<string>  $months  The horizon, the start month first.
      * @param  array<string, int>  $concrete  The parent's concrete spend by month.
      * @param  list<ForecastEstimateAdjustment>  $adjustments  Latest start first.
      * @return list<CategoryEstimate>
      */
-    private function estimatesFor(string $accountId, string $bucket, EstimateRow $row, array $months, array $concrete, array $adjustments): array
+    private function estimatesFor(string $accountId, string $parent, EstimateRow $row, array $timing, array $months, array $concrete, array $adjustments): array
     {
         $estimates = [];
 
@@ -290,16 +414,18 @@ class EstimateCalculator
             $amount = max($planned - $spent, 0);
 
             if ($amount > 0 || $spent > 0 || $adjustment !== null) {
-                $basis = $adjustment === null ? $row->basis() : ForecastEstimateBasis::Adjustment;
                 $estimates[] = new CategoryEstimate(
                     accountId: $accountId,
-                    categoryId: $bucket === self::OTHER ? null : $bucket,
+                    categoryId: $parent === self::OTHER ? null : $parent,
                     month: $month,
                     amount: $amount,
-                    basis: $basis,
+                    basis: $adjustment === null ? $row->basis() : ForecastEstimateBasis::Adjustment,
                     planned: $planned,
                     spent: $spent,
                     budgetAmount: $adjustment === null ? $row->budgetAmount() : null,
+                    kind: $row->kind,
+                    day: $timing['day'],
+                    profile: $timing['profile'],
                 );
             }
         }
