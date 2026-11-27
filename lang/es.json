@@ -4533,5 +4533,9 @@
     "≈ :amount a month": "≈ :amount al mes",
     "Unique voters": "Votantes únicos",
     ":count requests, most voted first.": ":count solicitudes, las más votadas primero.",
-    "No requests waiting for review.": "No hay solicitudes pendientes de revisión."
+    "No requests waiting for review.": "No hay solicitudes pendientes de revisión.",
+    "Actual": "Real",
+    "So far + forecast": "Real + previsión",
+    "Lowest balance": "Saldo mínimo",
+    "Accounts with a warning": "Cuentas con aviso"
 }

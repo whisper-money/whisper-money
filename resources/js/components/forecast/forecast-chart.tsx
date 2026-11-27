@@ -1,3 +1,4 @@
+import { ForecastChartTooltip } from '@/components/forecast/forecast-chart-tooltip';
 import {
     Card,
     CardContent,
@@ -5,7 +6,11 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { ChartConfig, ChartContainer } from '@/components/ui/chart';
+import {
+    ChartConfig,
+    ChartContainer,
+    ChartTooltip,
+} from '@/components/ui/chart';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { chartRoleColors } from '@/lib/chart-colors';
@@ -41,6 +46,8 @@ const EXPENSE = chartRoleColors.cashflowExpenseColor;
 const CLOSE = chartRoleColors.accountMainLineColor;
 
 const BALANCE_AXIS = 'balance';
+
+const TOOLTIP_COLORS = { income: INCOME, expenses: EXPENSE, close: CLOSE };
 
 const chartConfig = {
     income: { label: 'Income', color: INCOME },
@@ -342,12 +349,26 @@ export function ForecastChart({
                                 domain={['dataMin', 'dataMax']}
                             />
                         )}
+                        <ChartTooltip
+                            cursor={{ fill: 'var(--muted)', fillOpacity: 0.5 }}
+                            content={({ active, label, coordinate }) => (
+                                <ForecastChartTooltip
+                                    active={active}
+                                    label={label}
+                                    coordinate={coordinate}
+                                    points={points}
+                                    forecast={forecast}
+                                    colors={TOOLTIP_COLORS}
+                                />
+                            )}
+                        />
                         <Area
                             yAxisId={balanceAxis}
                             dataKey="band"
                             stroke="none"
                             fill={CLOSE}
                             fillOpacity={0.12}
+                            activeDot={false}
                             isAnimationActive={false}
                             connectNulls={false}
                         />
