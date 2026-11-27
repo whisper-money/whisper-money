@@ -52,7 +52,7 @@ class TransferEstimator
             return [];
         }
 
-        $accountIds = array_values(array_unique(array_merge(...array_map(fn (string $pair): array => explode('|', $pair), array_map(strval(...), array_keys($moves))))));
+        $accountIds = $this->accountIdsOf($moves);
         $firstDates = $this->history->firstTransactionDates($user, $accountIds);
         $names = Account::query()->where('user_id', $user->id)->whereIn('id', $accountIds)->pluck('name', 'id')->all();
         $estimates = [];
@@ -112,6 +112,23 @@ class TransferEstimator
         }
 
         return $moves;
+    }
+
+    /**
+     * Every account a pair of the moves names.
+     *
+     * @param  array<string, mixed>  $moves  Keyed by pair, see movesByPair().
+     * @return list<string>
+     */
+    private function accountIdsOf(array $moves): array
+    {
+        $ids = [];
+
+        foreach (array_keys($moves) as $pair) {
+            array_push($ids, ...explode('|', (string) $pair));
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**

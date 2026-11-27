@@ -54,7 +54,7 @@ class ForecastPlanRows
             ->values();
         $estimates = array_values(array_filter($plan->categoryEstimates, fn (CategoryEstimate $estimate): bool => $estimate->accountId === $account->id));
 
-        return $this->assemble($user, $items, $estimates, fn (): string => $account->id, $months, false, $this->transferRows->rows($plan->transferEstimates, $account->id, $months));
+        return $this->assemble($user, $items, $estimates, fn (): string => $account->id, $months, false, $this->transferRows->rows($plan->transferEstimates, $account->id, $months, $plan->projectedAccountIds()));
     }
 
     /**
@@ -68,7 +68,7 @@ class ForecastPlanRows
      */
     public function buildAll(User $user, ForecastPlan $plan, array $months): array
     {
-        return $this->assemble($user, $plan->items, $plan->categoryEstimates, fn (ForecastItem $item): string => $item->destination_account_id ?? $item->account_id, $months, true, $this->transferRows->rows($plan->transferEstimates, null, $months));
+        return $this->assemble($user, $plan->items, $plan->categoryEstimates, fn (ForecastItem $item): string => $item->destination_account_id ?? $item->account_id, $months, true, $this->transferRows->rows($plan->transferEstimates, null, $months, $plan->projectedAccountIds()));
     }
 
     /**

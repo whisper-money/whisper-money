@@ -168,6 +168,11 @@ it('counts a transfer to a loan the forecast leaves out as money leaving, once',
         ->and($plan->categoryEstimates)->toBeEmpty()
         ->and(array_column($projection['accounts'][0]['months'], 'close'))->toBe([500000, 460000, 420000, 380000])
         ->and(array_column($projection['total'], 'close'))->toBe([500000, 460000, 420000, 380000]);
+
+    $all = app(ForecastPlanRows::class)->buildAll($this->user, $plan, ['2026-11', '2026-12'])['transfers'];
+
+    expect($all)->toHaveCount(1)
+        ->and($all[0])->toMatchArray(['direction' => 'out', 'counterpartyName' => 'Checking', 'name' => 'Car loan', 'amounts' => ['2026-11' => -40000, '2026-12' => -40000]]);
 });
 
 it('nets what comes back against what goes, and goes the way the median says', function () {
@@ -234,11 +239,12 @@ it('shows the usual transfer in the plan of both accounts, read-only', function 
             'source' => 'estimate',
             'direction' => 'in',
             'counterpartyName' => 'Payroll',
-            'amounts' => ['2026-11' => 0, '2026-12' => 150000, '2027-01' => 150000],
-            'current' => ['planned' => null, 'real' => 150000, 'date' => null, 'status' => 'matched'],
+            'anchorDate' => '2026-12-01',
+            'amounts' => ['2026-11' => 150000, '2026-12' => 150000, '2027-01' => 150000],
+            'current' => ['planned' => 150000, 'real' => 150000, 'date' => '2026-11-10', 'status' => 'matched'],
             'occurrenceDates' => [],
         ])
-        ->and($out[0])->toMatchArray(['direction' => 'out', 'counterpartyName' => 'Daily', 'amounts' => ['2026-11' => 0, '2026-12' => -150000, '2027-01' => -150000]])
+        ->and($out[0])->toMatchArray(['direction' => 'out', 'counterpartyName' => 'Daily', 'amounts' => ['2026-11' => -150000, '2026-12' => -150000, '2027-01' => -150000]])
         ->and($all[0])->toMatchArray(['direction' => 'in', 'counterpartyName' => 'Payroll', 'name' => 'Daily'])
         ->and($all[0]['definition'])->toMatchArray(['accountId' => $payroll->id, 'destinationAccountId' => $daily->id, 'versions' => []]);
 });

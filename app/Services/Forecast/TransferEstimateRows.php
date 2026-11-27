@@ -15,13 +15,15 @@ class TransferEstimateRows
 {
     /**
      * @param  list<TransferEstimate>  $estimates
-     * @param  string|null  $accountId  The account the amounts are signed from (a transfer into it is positive), or null to sign each from its destination.
+     * @param  string|null  $accountId  The account the amounts are signed from (a transfer into it is positive), or null for every account at once: each pair is then signed from its destination, or from its source when the destination is an account the forecast leaves out (a loan), so money leaving reads as leaving.
      * @param  list<string>  $months  The `Y-m` months shown, the month in progress first.
+     * @param  list<string>  $projectedIds  The accounts the forecast projects.
      * @return list<array<string, mixed>>
      */
-    public function rows(array $estimates, ?string $accountId, array $months): array
+    public function rows(array $estimates, ?string $accountId, array $months, array $projectedIds): array
     {
         $shown = array_flip($months);
+        $projected = array_flip($projectedIds);
         $byPair = [];
 
         foreach ($estimates as $estimate) {
@@ -30,29 +32,40 @@ class TransferEstimateRows
             }
         }
 
-        return array_values(array_map(fn (array $pair): array => $this->row($pair, $accountId ?? $pair[0]->toAccountId, $months[0]), $byPair));
+        return array_values(array_map(
+            fn (array $pair): array => $this->row($pair, $accountId ?? (isset($projected[$pair[0]->toAccountId]) ? $pair[0]->toAccountId : $pair[0]->fromAccountId), $months[0], $accountId === null),
+            $byPair,
+        ));
     }
 
     /**
-     * @param  non-empty-list<TransferEstimate>  $estimates  One pair's months.
+     * One pair's row. `name` is the destination's name and
+     * `counterpartyName` the other account's, seen from `$side` (the
+     * source's, when every account is shown), as for a transfer line. In the month in progress, `planned` is the month's
+     * whole figure and `real` what already moved, the same as a line's;
+     * its `anchorDate` is the usual day, read from a month after the
+     * start, which clamps it to the days left.
+     *
+     * @param  non-empty-list<TransferEstimate>  $estimates  One pair's months, the earliest first.
      * @return array<string, mixed>
      */
-    private function row(array $estimates, string $side, string $currentMonth): array
+    private function row(array $estimates, string $side, string $currentMonth, bool $allAccounts): array
     {
         $first = $estimates[0];
+        $usual = $estimates[1] ?? $first;
         $incoming = $first->toAccountId === $side;
         $sign = $incoming ? 1 : -1;
         $amounts = [];
         $current = ['planned' => null, 'real' => null, 'date' => null, 'status' => 'none'];
 
         foreach ($estimates as $estimate) {
-            $amounts[$estimate->month] = $sign * $estimate->amount;
+            $amounts[$estimate->month] = $sign * ($estimate->month === $currentMonth ? $estimate->planned : $estimate->amount);
 
             if ($estimate->month === $currentMonth) {
                 $current = [
-                    'planned' => $estimate->amount > 0 ? $sign * $estimate->amount : null,
+                    'planned' => $sign * $estimate->planned,
                     'real' => $estimate->moved > 0 ? $sign * $estimate->moved : null,
-                    'date' => $estimate->amount > 0 ? $estimate->date : null,
+                    'date' => $estimate->date,
                     'status' => $estimate->amount > 0 ? 'pending' : 'matched',
                 ];
             }
@@ -63,9 +76,9 @@ class TransferEstimateRows
             'name' => $first->toAccountName,
             'kind' => 'transfer',
             'source' => 'estimate',
-            'anchorDate' => $first->date,
+            'anchorDate' => $usual->date,
             'direction' => $incoming ? 'in' : 'out',
-            'counterpartyName' => $incoming ? $first->fromAccountName : $first->toAccountName,
+            'counterpartyName' => $incoming || $allAccounts ? $first->fromAccountName : $first->toAccountName,
             'amounts' => $amounts,
             'current' => $current,
             'accountId' => $first->fromAccountId,
@@ -75,7 +88,7 @@ class TransferEstimateRows
                 'accountId' => $first->fromAccountId,
                 'destinationAccountId' => $first->toAccountId,
                 'frequency' => 'monthly',
-                'anchorDate' => $first->date,
+                'anchorDate' => $usual->date,
                 'endsOn' => null,
                 'versions' => [],
                 'overrides' => [],

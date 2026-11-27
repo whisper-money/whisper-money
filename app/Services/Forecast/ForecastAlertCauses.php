@@ -33,8 +33,7 @@ class ForecastAlertCauses
             ->filter(fn (Occurrence $occurrence): bool => $occurrence->accountId === $accountId
                 && $occurrence->amount < 0
                 && ForecastCalendar::monthKey($occurrence->date) === $month
-                && $items->has($occurrence->itemId)
-                && $items->get($occurrence->itemId)->frequency !== ForecastFrequency::Monthly)
+                && ! in_array($items->get($occurrence->itemId)?->frequency, [null, ForecastFrequency::Monthly], true))
             ->sortBy('amount')
             ->take(self::LIMIT)
             ->map(fn (Occurrence $occurrence): array => ['name' => (string) $items->get($occurrence->itemId)?->name, 'amount' => -$occurrence->amount])

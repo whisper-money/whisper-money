@@ -30,6 +30,14 @@ final readonly class ForecastPlan
     ) {}
 
     /**
+     * @return list<string>
+     */
+    public function projectedAccountIds(): array
+    {
+        return array_map(fn (ProjectionAccount $account): string => $account->id, $this->input->accounts);
+    }
+
+    /**
      * What each occurrence is called, by the id it carries: a line's name,
      * or "Payroll → Daily" for an estimated transfer.
      *
