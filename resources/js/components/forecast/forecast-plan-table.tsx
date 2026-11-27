@@ -644,8 +644,8 @@ export function ForecastPlanTable({
 }
 
 /**
- * The plan's section: its heading with "Expand all", and the card with the table with the first
- * column held in place while the months scroll.
+ * The plan: its heading with "Expand all" above, then the card with the
+ * table, the first column held in place while the months scroll.
  */
 export function PlanTableCard({
     title,
@@ -672,21 +672,23 @@ export function PlanTableCard({
             title={title}
             description={description}
             aside={
-                <>
-                    {onToggleAll && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={onToggleAll}
-                            data-test="forecast-toggle-all"
-                        >
-                            {allExpanded
-                                ? __('Collapse all')
-                                : __('Expand all')}
-                        </Button>
-                    )}
-                    {headerAction}
-                </>
+                (onToggleAll || headerAction) && (
+                    <>
+                        {onToggleAll && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onToggleAll}
+                                data-test="forecast-toggle-all"
+                            >
+                                {allExpanded
+                                    ? __('Collapse all')
+                                    : __('Expand all')}
+                            </Button>
+                        )}
+                        {headerAction}
+                    </>
+                )
             }
         >
             <Card className="gap-0 py-0" data-test="forecast-plan">
