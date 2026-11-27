@@ -14,14 +14,8 @@ import { type ForecastAllData, type ForecastData } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { type ReactNode } from 'react';
 
-interface TooltipColors {
-    income: string;
-    expenses: string;
-    close: string;
-}
-
 /** The swatches of the tooltip: the chart's income and expense bars and its closing line. */
-export const FORECAST_TOOLTIP_COLORS: TooltipColors = {
+const COLORS = {
     income: chartRoleColors.cashflowIncomeColor,
     expenses: chartRoleColors.cashflowExpenseColor,
     close: chartRoleColors.accountMainLineColor,
@@ -33,7 +27,6 @@ interface ForecastChartTooltipProps {
     coordinate?: { x?: number; y?: number };
     points: ForecastChartPoint[];
     forecast: ForecastData | ForecastAllData;
-    colors?: TooltipColors;
 }
 
 function kindLabel(kind: ChartTooltipKind): string {
@@ -100,7 +93,6 @@ export function ForecastChartTooltip({
     coordinate,
     points,
     forecast,
-    colors = FORECAST_TOOLTIP_COLORS,
 }: ForecastChartTooltipProps) {
     const point = points.find((candidate) => candidate.month === label);
     const data = point ? chartTooltipData(point, forecast) : null;
@@ -111,11 +103,7 @@ export function ForecastChartTooltip({
 
     return (
         <ChartTooltipPortal coordinate={coordinate}>
-            <ForecastChartTooltipCard
-                data={data}
-                forecast={forecast}
-                colors={colors}
-            />
+            <ForecastChartTooltipCard data={data} forecast={forecast} />
         </ChartTooltipPortal>
     );
 }
@@ -123,7 +111,6 @@ export function ForecastChartTooltip({
 interface ForecastChartTooltipCardProps {
     data: ChartTooltipData;
     forecast: ForecastData | ForecastAllData;
-    colors?: TooltipColors;
     id?: string;
     className?: string;
 }
@@ -137,7 +124,6 @@ interface ForecastChartTooltipCardProps {
 export function ForecastChartTooltipCard({
     data,
     forecast,
-    colors = FORECAST_TOOLTIP_COLORS,
     id,
     className,
 }: ForecastChartTooltipCardProps) {
@@ -165,7 +151,7 @@ export function ForecastChartTooltipCard({
             </div>
             <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
                 <Row
-                    marker={<Swatch color={colors.income} />}
+                    marker={<Swatch color={COLORS.income} />}
                     label={__('Income')}
                 >
                     <AmountDisplay
@@ -176,7 +162,7 @@ export function ForecastChartTooltipCard({
                     />
                 </Row>
                 <Row
-                    marker={<Swatch color={colors.expenses} />}
+                    marker={<Swatch color={COLORS.expenses} />}
                     label={__('Expenses')}
                 >
                     <AmountDisplay
@@ -188,7 +174,7 @@ export function ForecastChartTooltipCard({
             {data.close !== null && (
                 <div className="flex flex-col gap-1.5 border-t border-border/50 pt-1.5">
                     <Row
-                        marker={<Swatch color={colors.close} line />}
+                        marker={<Swatch color={COLORS.close} line />}
                         label={
                             total ? __('Total balance') : __('Closing balance')
                         }

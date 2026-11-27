@@ -21,7 +21,6 @@ import { type ForecastAllData, type ForecastData } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import {
     useEffect,
-    useId,
     useLayoutEffect,
     useMemo,
     useRef,
@@ -150,7 +149,6 @@ export function ForecastMobileChart({
     const points = useMemo(() => mobileChartPoints(forecast), [forecast]);
     const paths = useMemo(() => linePaths(points), [points]);
     const highest = Math.max(1, ...points.map((point) => point.min ?? 0));
-    const tooltipId = useId();
     const barsRef = useRef<HTMLDivElement>(null);
     const [tooltipMonth, setTooltipMonth] = useBarTooltip(barsRef);
     const tooltipPoint = points.find((point) => point.month === tooltipMonth);
@@ -192,9 +190,6 @@ export function ForecastMobileChart({
                     {points.map((point) => {
                         const selected = point.month === selectedMonth;
                         const color = barColor(point, threshold);
-                        const showsTooltip =
-                            tooltipData !== null &&
-                            point.month === tooltipMonth;
 
                         return (
                             <button
@@ -204,14 +199,6 @@ export function ForecastMobileChart({
                                     point.status === 'past'
                                         ? undefined
                                         : selected
-                                }
-                                aria-expanded={
-                                    point.status === 'locked'
-                                        ? undefined
-                                        : showsTooltip
-                                }
-                                aria-describedby={
-                                    showsTooltip ? tooltipId : undefined
                                 }
                                 aria-label={
                                     point.min === null
@@ -256,14 +243,9 @@ export function ForecastMobileChart({
                     <MobileChartTooltip
                         barsRef={barsRef}
                         month={tooltipData === null ? null : tooltipMonth}
-                        monthIndex={points.findIndex(
-                            (point) => point.month === tooltipMonth,
-                        )}
-                        monthCount={points.length}
                     >
                         {tooltipData && (
                             <ForecastChartTooltipCard
-                                id={tooltipId}
                                 data={tooltipData}
                                 forecast={forecast}
                             />
@@ -331,20 +313,17 @@ function useBarTooltip(barsRef: RefObject<HTMLElement | null>) {
 
 /**
  * The tooltip's place over the bars: its bottom just above them, centred on
- * the tapped month and kept inside the screen. It is a polite live region,
+ * the tapped month and kept inside the screen (it is absolute inside the
+ * bars, hence the offset from their left). It is a polite live region,
  * so a screen reader reads the card out when a tap opens it.
  */
 function MobileChartTooltip({
     barsRef,
     month,
-    monthIndex,
-    monthCount,
     children,
 }: {
     barsRef: RefObject<HTMLElement | null>;
     month: string | null;
-    monthIndex: number;
-    monthCount: number;
     children: ReactNode;
 }) {
     const tooltipRef = useRef<HTMLDivElement>(null);
@@ -352,26 +331,28 @@ function MobileChartTooltip({
 
     useLayoutEffect(() => {
         const bars = barsRef.current;
+        const bar = bars?.querySelector(
+            `[data-test="forecast-mobile-bar-${month}"]`,
+        );
         const tooltip = tooltipRef.current;
 
-        if (month === null || bars === null || tooltip === null) {
+        if (!bars || !bar || !tooltip) {
             setLeft(null);
 
             return;
         }
 
-        const rect = bars.getBoundingClientRect();
+        const barRect = bar.getBoundingClientRect();
 
         setLeft(
             mobileTooltipLeft({
-                barCenter:
-                    rect.left + ((monthIndex + 0.5) / monthCount) * rect.width,
-                chartLeft: rect.left,
+                barCenter: barRect.left + barRect.width / 2,
+                chartLeft: bars.getBoundingClientRect().left,
                 tooltipWidth: tooltip.offsetWidth,
                 screenWidth: document.documentElement.clientWidth,
             }),
         );
-    }, [barsRef, month, monthIndex, monthCount]);
+    }, [barsRef, month]);
 
     return (
         <div
@@ -380,7 +361,7 @@ function MobileChartTooltip({
             className="pointer-events-none absolute bottom-[calc(100%+0.5rem)] z-50 w-max"
             style={{
                 left: left ?? 0,
-                visibility: left === null ? 'hidden' : 'visible',
+                opacity: left === null ? 0 : 1,
             }}
             data-test="forecast-mobile-chart-tooltip"
         >

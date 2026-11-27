@@ -81,11 +81,7 @@ describe('ForecastMobileChart', () => {
 
         expect(onSelectMonth).toHaveBeenCalledWith('2026-12');
         expect(tooltip()).toHaveTextContent('Forecast');
-        expect(bar('2026-12')).toHaveAttribute('aria-expanded', 'true');
-        expect(bar('2026-12')).toHaveAttribute(
-            'aria-describedby',
-            tooltip()?.id,
-        );
+        expect(tooltip()?.closest('[aria-live="polite"]')).not.toBeNull();
     });
 
     it('hides the tooltip on a second tap of the same month', () => {
