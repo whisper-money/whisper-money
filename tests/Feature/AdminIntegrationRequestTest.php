@@ -9,23 +9,56 @@ beforeEach(function () {
     $this->admin = User::factory()->create(['email' => 'admin@whisper.test']);
 });
 
-test('the admin page lists every integration request, pending first', function () {
-    $approved = IntegrationRequest::factory()->approved()->create(['name' => 'Revolut']);
-    $approved->votes()->create(['user_id' => $this->admin->id]);
-    $pending = IntegrationRequest::factory()->create(['name' => 'N26']);
-    IntegrationRequest::factory()->rejected()->create();
+test('the admin page lists only the pending requests, most voted first', function () {
+    IntegrationRequest::factory()->approved()->create();
+    $older = IntegrationRequest::factory()->create(['created_at' => now()->subDays(2)]);
+    $newer = IntegrationRequest::factory()->create(['created_at' => now()->subDay()]);
+    $mostVoted = IntegrationRequest::factory()->create(['created_at' => now()->subDays(3)]);
+    $mostVoted->votes()->create(['user_id' => $this->admin->id]);
 
     $this->actingAs($this->admin)
         ->get('/admin')
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('integrationRequests', 3)
-            ->where('integrationRequests.0.id', $pending->id)
-            ->where('integrationRequests.0.status', 'pending')
-            ->where('integrationRequests.0.submitted_by', $pending->user->email)
-            ->where('integrationRequests.1.id', $approved->id)
-            ->where('integrationRequests.1.votes_count', 1)
+            ->where('integrationRequests.0.id', $mostVoted->id)
+            ->where('integrationRequests.0.submitted_by', $mostVoted->user->email)
+            ->where('integrationRequests.1.id', $newer->id)
+            ->where('integrationRequests.2.id', $older->id)
         );
+});
+
+test('the integration requests page lists every request, most voted first', function () {
+    $voter = User::factory()->create();
+    $approved = IntegrationRequest::factory()->approved()->create();
+    $approved->votes()->create(['user_id' => $this->admin->id]);
+    $approved->votes()->create(['user_id' => $this->admin->id]);
+    $approved->votes()->create(['user_id' => $voter->id]);
+    $pending = IntegrationRequest::factory()->create();
+    $pending->votes()->create(['user_id' => $voter->id]);
+    $rejected = IntegrationRequest::factory()->rejected()->create();
+
+    $this->actingAs($this->admin)
+        ->get('/admin/integration-requests')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/integration-requests')
+            ->has('integrationRequests', 3)
+            ->where('integrationRequests.0.id', $approved->id)
+            ->where('integrationRequests.0.votes_count', 3)
+            ->where('integrationRequests.0.voters_count', 2)
+            ->where('integrationRequests.1.id', $pending->id)
+            ->where('integrationRequests.1.voters_count', 1)
+            ->where('integrationRequests.2.id', $rejected->id)
+            ->where('integrationRequests.2.votes_count', 0)
+            ->where('integrationRequests.2.voters_count', 0)
+        );
+});
+
+test('a non-admin cannot open the integration requests page', function () {
+    $this->actingAs(User::factory()->create())
+        ->get('/admin/integration-requests')
+        ->assertNotFound();
 });
 
 test('a request whose author deleted their account still says who sent it', function () {

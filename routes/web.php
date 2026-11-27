@@ -458,6 +458,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('admin', [AdminController::class, 'index'])->name('admin.index');
     Route::get('admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
+    Route::get('admin/integration-requests', [AdminIntegrationRequestController::class, 'index'])->name('admin.integration-requests.index');
     Route::post('admin/run', [AdminController::class, 'run'])->name('admin.run');
     Route::patch('admin/integration-requests/{integrationRequest}', [AdminIntegrationRequestController::class, 'update'])->name('admin.integration-requests.update');
 });
