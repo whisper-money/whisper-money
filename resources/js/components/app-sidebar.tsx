@@ -28,9 +28,12 @@ import AppLogo from './app-logo';
 
 export function AppSidebar() {
     const page = usePage<SharedData>();
+    // The UI language, not the `locale` prop: that one is the format region,
+    // and a reader may want the app in English with Mexican numbers.
+    const language = page.props.auth.user?.locale ?? page.props.locale;
     const mainNavItems = useMemo(
-        () => getMainNavItems(page.props.features, page.props.locale),
-        [page.props.features, page.props.locale],
+        () => getMainNavItems(page.props.features, language),
+        [page.props.features, language],
     );
     const mobileNavItems = getMobileNavItems(mainNavItems);
     const { trigger } = useWebHaptics();

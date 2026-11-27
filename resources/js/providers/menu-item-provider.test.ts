@@ -50,6 +50,44 @@ describe('menu item provider', () => {
         ]);
     });
 
+    it('reads the language from a regional locale', () => {
+        expect(mobileBar({}, 'es-ES')).toEqual(mobileBar({}, 'es'));
+        expect(mobileBar({}, 'es-MX')).toEqual(mobileBar({}, 'es'));
+        expect(mobileBar({}, 'en-GB')).toEqual(mobileBar({}, 'en'));
+    });
+
+    it('falls back to English for a language without labels', () => {
+        expect(mobileBar({}, 'de-DE')).toEqual([
+            'Home',
+            'Cashflow',
+            'Accounts',
+            'Movements',
+            'Plan',
+        ]);
+    });
+
+    it('labels the mobile bar in French', () => {
+        const flagOff = [
+            'Accueil',
+            'Trésorerie',
+            'Comptes',
+            'Opérations',
+            'Plan',
+        ];
+        const flagOn = [
+            'Accueil',
+            'Trésorerie',
+            'Prévision',
+            'Opérations',
+            'Plan',
+        ];
+
+        expect(mobileBar({}, 'fr')).toEqual(flagOff);
+        expect(mobileBar({}, 'fr-FR')).toEqual(flagOff);
+        expect(mobileBar({ forecast: true }, 'fr')).toEqual(flagOn);
+        expect(mobileBar({ forecast: true }, 'fr-FR')).toEqual(flagOn);
+    });
+
     it('puts Forecast after Cashflow with the flag on, in both the sidebar and the mobile bar', () => {
         const items = getMainNavItems(features({ forecast: true }), 'es');
 
