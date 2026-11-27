@@ -25,7 +25,12 @@ export type ForecastLineKind =
     | 'once'
     | 'transfer';
 
-export type ForecastLineSource = 'detected' | 'manual' | 'suggested';
+/** `estimate`: a usual transfer between the user's accounts, read-only. */
+export type ForecastLineSource =
+    | 'detected'
+    | 'manual'
+    | 'suggested'
+    | 'estimate';
 
 export interface ForecastAccountTab {
     id: string;

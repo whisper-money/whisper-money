@@ -127,14 +127,14 @@ class ForecastRestOfMonth
      */
     private function lines(ForecastPlan $plan, array $pending, array $selected): array
     {
-        $names = $plan->items->pluck('name', 'id');
+        $names = $plan->occurrenceNames();
         $lines = [];
 
         foreach ($pending as $occurrence) {
             $amount = self::effectOn($occurrence, $selected);
 
             if ($amount !== 0) {
-                $lines[] = ['name' => (string) $names->get($occurrence->itemId), 'date' => $occurrence->date, 'amount' => $amount];
+                $lines[] = ['name' => $names[$occurrence->itemId] ?? '', 'date' => $occurrence->date, 'amount' => $amount];
             }
         }
 

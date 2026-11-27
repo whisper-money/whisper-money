@@ -22,7 +22,8 @@ use Illuminate\Database\Eloquent\Collection;
  * core of the forecast.
  *
  * Each figure is the median of the three complete months before the start,
- * over every transaction except transfers between the user's accounts, the
+ * over every transaction except transfers between the user's accounts
+ * (TransferEstimator projects those), the
  * ones marked a one-off and the ones that paid a line the forecast still
  * projects (yearly and one-off lines the user made, see
  * ForecastItem::projecting(); those add on top of the estimate). Only the
@@ -120,12 +121,7 @@ class EstimateCalculator
      */
     private function pastMonthsByAccount(User $user, Collection $accounts, string $startDate): array
     {
-        $firstMonths = Transaction::query()
-            ->where('user_id', $user->id)
-            ->whereIn('account_id', $accounts->modelKeys())
-            ->groupBy('account_id')
-            ->selectRaw('account_id, min(transaction_date) as first_date')
-            ->pluck('first_date', 'account_id');
+        $firstMonths = $this->history->firstTransactionDates($user, $accounts->modelKeys());
 
         $pastMonths = [];
         foreach ($accounts as $account) {
@@ -142,7 +138,10 @@ class EstimateCalculator
     /**
      * Each account's money by row (side and parent category) and by month
      * and day, in its owner's share: positive spend lowered by refunds on
-     * the spend side, positive money in on the income side.
+     * the spend side, positive money in on the income side. Transfers are
+     * paired over every account of the space, so one to or from an account
+     * the forecast leaves out is internal too: TransferEstimator projects
+     * it instead.
      *
      * @param  Collection<int, Account>  $accounts
      * @param  array<string, string>  $parents
@@ -150,14 +149,15 @@ class EstimateCalculator
      */
     private function flowsByBucket(User $user, string $spaceId, Collection $accounts, string $startDate, array $parents): array
     {
-        $transactions = $this->history->estimableTransactions($user, $spaceId, ForecastCalendar::monthStart($startDate, -self::MEDIAN_MONTHS), $startDate, $accounts->modelKeys());
+        $transactions = $this->history->estimableTransactions($user, $spaceId, ForecastCalendar::monthStart($startDate, -self::MEDIAN_MONTHS), $startDate);
         $legs = $this->pairer->pair($transactions);
+        $included = array_flip($accounts->modelKeys());
         $flows = [];
 
         foreach ($transactions as $transaction) {
             $kind = $this->sideOf($transaction);
 
-            if ($kind === null || ($legs[$transaction->id] ?? null)?->isInternal()) {
+            if ($kind === null || ! isset($included[$transaction->account_id]) || ($legs[$transaction->id] ?? null)?->isInternal()) {
                 continue;
             }
 

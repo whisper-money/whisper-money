@@ -9,7 +9,9 @@ use App\Services\Forecast\Data\Occurrence;
 /**
  * Why a month runs short: its two largest charges on the account that are
  * not monthly. They are what the user already knows is coming, which explains
- * the dip. The forecast page's warning and the dashboard's card both say them.
+ * the dip. The usual transfers between the user's accounts (TransferEstimator)
+ * are monthly too, so they never are one. The forecast page's warning and the
+ * dashboard's card both say them.
  */
 class ForecastAlertCauses
 {
@@ -31,7 +33,8 @@ class ForecastAlertCauses
             ->filter(fn (Occurrence $occurrence): bool => $occurrence->accountId === $accountId
                 && $occurrence->amount < 0
                 && ForecastCalendar::monthKey($occurrence->date) === $month
-                && $items->get($occurrence->itemId)?->frequency !== ForecastFrequency::Monthly)
+                && $items->has($occurrence->itemId)
+                && $items->get($occurrence->itemId)->frequency !== ForecastFrequency::Monthly)
             ->sortBy('amount')
             ->take(self::LIMIT)
             ->map(fn (Occurrence $occurrence): array => ['name' => (string) $items->get($occurrence->itemId)?->name, 'amount' => -$occurrence->amount])

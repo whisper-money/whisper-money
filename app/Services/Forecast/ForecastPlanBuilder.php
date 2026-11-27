@@ -13,6 +13,7 @@ use App\Services\Forecast\Data\ForecastPlan;
 use App\Services\Forecast\Data\Occurrence;
 use App\Services\Forecast\Data\ProjectionAccount;
 use App\Services\Forecast\Data\ProjectionInput;
+use App\Services\Forecast\Data\TransferEstimate;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -23,7 +24,9 @@ use Illuminate\Database\Eloquent\Collection;
  * the occurrences of the lines that still project for them (the ones the
  * user made or kept by hand: detected recurring lines stay stored but no
  * longer project, see ForecastItem::projecting()); and the income and spend
- * estimates of each parent category. Estimates are worked out over every included account,
+ * estimates of each parent category, and the usual transfers between the
+ * user's accounts (see TransferEstimator), which move money as transfer
+ * occurrences. Estimates are worked out over every included account,
  * because a budget is split across them, and only then narrowed to the
  * selection. A transfer counts when either of its accounts is included and
  * selected; the projector moves only the accounts it projects.
@@ -39,6 +42,7 @@ class ForecastPlanBuilder
         private readonly OccurrenceExpander $expander,
         private readonly EstimateCalculator $estimates,
         private readonly ForecastAccounts $accounts,
+        private readonly TransferEstimator $transfers,
     ) {}
 
     /**
@@ -57,20 +61,44 @@ class ForecastPlanBuilder
         $selectedIds = array_flip($selected->modelKeys());
 
         $selectedEstimates = array_values(array_filter($categoryEstimates, fn (CategoryEstimate $estimate): bool => isset($selectedIds[$estimate->accountId])));
+        $selectedTransfers = array_values(array_filter(
+            $this->transfers->estimate($user, $spaceId, $included, $startDate, $horizonMonths),
+            fn (TransferEstimate $estimate): bool => isset($selectedIds[$estimate->fromAccountId]) || isset($selectedIds[$estimate->toAccountId]),
+        ));
         $touchesSelection = fn (Occurrence $occurrence): bool => isset($selectedIds[$occurrence->accountId])
             || ($occurrence->destinationAccountId !== null && isset($selectedIds[$occurrence->destinationAccountId]));
 
         return new ForecastPlan(
             new ProjectionInput(
                 $this->projectionAccounts($selected, $settings, $startDate),
-                array_values(array_filter($occurrences, $touchesSelection)),
+                [...array_values(array_filter($occurrences, $touchesSelection)), ...$this->transferOccurrences($selectedTransfers)],
                 array_map(fn (CategoryEstimate $estimate) => $estimate->toMonthlyEstimate(), $selectedEstimates),
                 $startDate,
                 $horizonMonths,
             ),
             $selectedEstimates,
             $items,
+            $selectedTransfers,
         );
+    }
+
+    /**
+     * @param  list<TransferEstimate>  $estimates
+     * @return list<Occurrence>
+     */
+    private function transferOccurrences(array $estimates): array
+    {
+        $occurrences = [];
+
+        foreach ($estimates as $estimate) {
+            $occurrence = $estimate->toOccurrence();
+
+            if ($occurrence !== null) {
+                $occurrences[] = $occurrence;
+            }
+        }
+
+        return $occurrences;
     }
 
     /**
