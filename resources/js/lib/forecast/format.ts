@@ -55,6 +55,8 @@ function sourceLabel(source: ForecastLineSource): string {
             return __('Added by you');
         case 'suggested':
             return __('Suggested');
+        case 'estimate':
+            return __('Median of 3 months');
     }
 }
 

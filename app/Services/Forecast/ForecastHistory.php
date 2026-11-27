@@ -68,6 +68,25 @@ class ForecastHistory
     }
 
     /**
+     * The date of each account's first transaction of the user, whatever
+     * the space; accounts without any are left out.
+     *
+     * @param  list<string>  $accountIds
+     * @return array<string, string> `Y-m-d` by account id.
+     */
+    public function firstTransactionDates(User $user, array $accountIds): array
+    {
+        return Transaction::query()
+            ->where('user_id', $user->id)
+            ->whereIn('account_id', $accountIds)
+            ->groupBy('account_id')
+            ->selectRaw('account_id, min(transaction_date) as first_date')
+            ->pluck('first_date', 'account_id')
+            ->map(fn (mixed $date): string => substr((string) $date, 0, 10))
+            ->all();
+    }
+
+    /**
      * @param  list<string>|null  $accountIds
      * @return Builder<Transaction>
      */

@@ -40,6 +40,7 @@ class ForecastPlanRows
         private readonly OccurrenceExpander $expander,
         private readonly ForecastHistory $history,
         private readonly ForecastDrift $drift,
+        private readonly TransferEstimateRows $transferRows,
     ) {}
 
     /**
@@ -53,7 +54,7 @@ class ForecastPlanRows
             ->values();
         $estimates = array_values(array_filter($plan->categoryEstimates, fn (CategoryEstimate $estimate): bool => $estimate->accountId === $account->id));
 
-        return $this->assemble($user, $items, $estimates, fn (): string => $account->id, $months, false);
+        return $this->assemble($user, $items, $estimates, fn (): string => $account->id, $months, false, $this->transferRows->rows($plan->transferEstimates, $account->id, $months, $plan->projectedAccountIds()));
     }
 
     /**
@@ -67,7 +68,7 @@ class ForecastPlanRows
      */
     public function buildAll(User $user, ForecastPlan $plan, array $months): array
     {
-        return $this->assemble($user, $plan->items, $plan->categoryEstimates, fn (ForecastItem $item): string => $item->destination_account_id ?? $item->account_id, $months, true);
+        return $this->assemble($user, $plan->items, $plan->categoryEstimates, fn (ForecastItem $item): string => $item->destination_account_id ?? $item->account_id, $months, true, $this->transferRows->rows($plan->transferEstimates, null, $months, $plan->projectedAccountIds()));
     }
 
     /**
@@ -75,9 +76,10 @@ class ForecastPlanRows
      * @param  list<CategoryEstimate>  $estimates
      * @param  Closure(ForecastItem): string  $sideOf  The account each line's amounts are signed from.
      * @param  list<string>  $months
+     * @param  list<array<string, mixed>>  $estimatedTransfers  The usual transfers between the user's accounts, see TransferEstimateRows.
      * @return array{income: list<array<string, mixed>>, expenses: list<array<string, mixed>>, transfers: list<array<string, mixed>>}
      */
-    private function assemble(User $user, Collection $items, array $estimates, Closure $sideOf, array $months, bool $perAccountEstimates): array
+    private function assemble(User $user, Collection $items, array $estimates, Closure $sideOf, array $months, bool $perAccountEstimates, array $estimatedTransfers): array
     {
         $sides = $items->mapWithKeys(fn (ForecastItem $item): array => [$item->id => $sideOf($item)])->all();
         $occurrences = $this->occurrences($items, $months);
@@ -123,7 +125,7 @@ class ForecastPlanRows
         return [
             'income' => $this->groupRows('income', $groups['income'], $categories, $perAccountEstimates),
             'expenses' => $this->groupRows('expenses', $groups['expenses'], $categories, $perAccountEstimates),
-            'transfers' => $this->sortedByWeight($transfers),
+            'transfers' => $this->sortedByWeight([...$transfers, ...$estimatedTransfers]),
         ];
     }
 
