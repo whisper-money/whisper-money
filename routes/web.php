@@ -3,6 +3,7 @@
 use App\Features\Forecast;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AchievementController;
+use App\Http\Controllers\Admin\IntegrationRequestController as AdminIntegrationRequestController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AgentDocsController;
 use App\Http\Controllers\Ai\AiConsentController;
@@ -450,6 +451,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('admin', [AdminController::class, 'index'])->name('admin.index');
     Route::post('admin/run', [AdminController::class, 'run'])->name('admin.run');
+    Route::patch('admin/integration-requests/{integrationRequest}', [AdminIntegrationRequestController::class, 'update'])->name('admin.integration-requests.update');
 });
 
 require __DIR__.'/settings.php';

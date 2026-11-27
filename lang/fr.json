@@ -3341,5 +3341,22 @@
     "Choose the accounts in the forecast": "Choisir les comptes de la prévision",
     "Start over": "Recommencer",
     "Start your forecast over?": "Recommencer votre prévision ?",
-    "Your edits, yearly payments, account settings and alerts in this space are deleted, and the forecast is worked out again from your transactions. This cannot be undone.": "Vos modifications, paiements annuels, réglages de comptes et alertes de cet espace sont supprimés, et la prévision est recalculée à partir de vos transactions. Cette action est irréversible."
+    "Your edits, yearly payments, account settings and alerts in this space are deleted, and the forecast is worked out again from your transactions. This cannot be undone.": "Vos modifications, paiements annuels, réglages de comptes et alertes de cet espace sont supprimés, et la prévision est recalculée à partir de vos transactions. Cette action est irréversible.",
+    "Approved": "Approuvée",
+    "Rejected": "Refusée",
+    "Not doable": "Non réalisable",
+    "Approve": "Approuver",
+    "Change status": "Changer l'état",
+    "Comment": "Commentaire",
+    "(shown to users)": "(visible par les utilisateurs)",
+    "(optional, shown to users)": "(facultatif, visible par les utilisateurs)",
+    "Request": "Demande",
+    "Votes": "Votes",
+    "Submitted": "Envoyée",
+    "Filter by status": "Filtrer par état",
+    "No integration requests found.": "Aucune demande d'intégration.",
+    "Tell users why this integration is not doable.": "Expliquez aux utilisateurs pourquoi cette intégration n'est pas réalisable.",
+    "Pending review: :count": "En attente de validation : :count",
+    "No requests with this status.": "Aucune demande avec cet état.",
+    "This status has no comment: the current one will be removed.": "Cet état n'a pas de commentaire : l'actuel sera supprimé."
 }

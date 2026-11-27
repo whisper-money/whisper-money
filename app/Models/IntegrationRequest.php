@@ -44,6 +44,18 @@ class IntegrationRequest extends Model
         ];
     }
 
+    /**
+     * Move the request to a new status. The comment is shown to users, so it
+     * is only kept on the statuses that explain themselves with one.
+     */
+    public function review(IntegrationRequestStatus $status, ?string $comment = null): void
+    {
+        $this->update([
+            'status' => $status,
+            'comment' => $status->keepsComment() && filled($comment) ? $comment : null,
+        ]);
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

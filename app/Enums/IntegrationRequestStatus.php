@@ -22,4 +22,21 @@ enum IntegrationRequestStatus: string
             self::Done => 'Done',
         };
     }
+
+    /**
+     * Marking a request not doable must tell users why.
+     */
+    public function requiresComment(): bool
+    {
+        return $this === self::NotDoable;
+    }
+
+    /**
+     * Whether a public comment survives a move to this status. Approving,
+     * rejecting, re-queuing or marking done drops any stale one.
+     */
+    public function keepsComment(): bool
+    {
+        return in_array($this, [self::NotDoable, self::InProgress], true);
+    }
 }
