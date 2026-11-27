@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\ForecastFrequency;
 use App\Enums\ForecastMatchedBy;
 use App\Models\Account;
@@ -36,7 +37,7 @@ function forecastLine(Account $account, int $amount, string $anchorDate, array $
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->checking = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->checking = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
 });
 
 it('pairs a payment with its occurrence and stores the deviation', function () {
@@ -83,7 +84,7 @@ it('leaves a payment the recognition rule rejects unmatched', function () {
 });
 
 it('ignores lines of other accounts, other users and archived lines', function () {
-    $savings = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     forecastLine($savings, -90000, '2026-01-01');
     forecastLine($this->checking, -90000, '2026-01-01', ['archived_at' => now()]);
     $stranger = Account::factory()->create(['currency_code' => 'EUR']);
@@ -167,7 +168,7 @@ it('never replaces a pairing the user made', function () {
 });
 
 it('matches both legs of a transfer, the receiving one by amount and date', function () {
-    $savings = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     $transfer = forecastLine($this->checking, -30000, '2026-01-02', [
         'destination_account_id' => $savings->id,
         'match_rules_json' => ['in' => ['traspaso', ['var' => 'description']]],
@@ -221,7 +222,7 @@ it('drops a pairing the user made once the transaction moves to an account the l
         'transaction_id' => $payment->id,
         'matched_by' => ForecastMatchedBy::User,
     ]);
-    $other = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $other = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
 
     $payment->updateQuietly(['account_id' => $other->id]);
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Enums\ForecastConfidence;
 use App\Enums\ForecastFrequency;
@@ -31,7 +32,7 @@ function candidateNamed(User $user, string $fingerprint): ?ForecastCandidate
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
 });
 
 it('finds a monthly bill whose references and dates change every month', function () {
@@ -131,7 +132,7 @@ it('continues after the occurrence an early charge paid', function () {
 });
 
 it('proposes a transfer between two accounts once, from the account it leaves', function () {
-    $savings = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     forecastMonthlyCharges($this->account, '2026-05-05', 7, -50000, 'TRASPASO A CUENTA AHORRO');
     forecastMonthlyCharges($savings, '2026-05-06', 7, 50000, 'TRASPASO RECIBIDO');
 
@@ -167,11 +168,11 @@ it('does not propose again what the user dismissed or already plans', function (
 
 it('reads only the user\'s own transactions in the space', function () {
     $partner = User::factory()->create();
-    $partnerAccount = Account::factory()->create(['user_id' => $partner->id, 'space_id' => $this->user->current_space_id, 'currency_code' => 'EUR']);
+    $partnerAccount = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $partner->id, 'space_id' => $this->user->current_space_id, 'currency_code' => 'EUR']);
     forecastMonthlyCharges($partnerAccount, '2026-03-08', 9, -1299, 'NETFLIX.COM');
 
     $otherSpace = Space::factory()->create();
-    $elsewhere = Account::factory()->create(['user_id' => $this->user->id, 'space_id' => $otherSpace->id, 'currency_code' => 'EUR']);
+    $elsewhere = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'space_id' => $otherSpace->id, 'currency_code' => 'EUR']);
     forecastMonthlyCharges($elsewhere, '2026-03-08', 9, -1299, 'HBO MAX');
 
     expect(recurringCandidates($this->user))->toBe([]);

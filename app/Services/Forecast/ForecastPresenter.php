@@ -51,7 +51,7 @@ class ForecastPresenter
     ) {}
 
     /**
-     * @param  string|null  $accountId  Null picks the account with a problem, else the main checking account; ALL_ACCOUNTS shows them all together.
+     * @param  string|null  $accountId  Null picks the account with a problem, else the main checking account, else one that is not projected only; ALL_ACCOUNTS shows them all together.
      * @return array{forecast: array<string, mixed>, projectionInput: array<string, mixed>|null}
      *
      * @throws NotFoundHttpException When the account is not one the forecast includes.
@@ -62,7 +62,13 @@ class ForecastPresenter
         $isPro = $user->hasProPlan();
         $included = $this->accounts->included($user, $spaceId);
         $all = $accountId === self::ALL_ACCOUNTS;
-        $base = ['scope' => $all ? self::ALL_ACCOUNTS : 'account', 'today' => $today, 'horizon' => $horizon, 'isPro' => $isPro];
+        $base = [
+            'scope' => $all ? self::ALL_ACCOUNTS : 'account',
+            'today' => $today,
+            'horizon' => $horizon,
+            'isPro' => $isPro,
+            'accountChoices' => $this->accounts->choices($user, $spaceId),
+        ];
 
         if ($included->isEmpty()) {
             abort_if($accountId !== null && ! $all, 404);
@@ -210,7 +216,8 @@ class ForecastPresenter
     }
 
     /**
-     * One pill per account, marked when it has a problem.
+     * One pill per account, marked when it has a problem or is projected
+     * only (it never warns).
      *
      * @return list<array<string, mixed>>
      */
@@ -221,6 +228,7 @@ class ForecastPresenter
             'name' => $account->name,
             'type' => $account->type,
             'currencyCode' => $account->currency_code,
+            'projectionOnly' => ForecastAccounts::isProjectionOnly($account->type),
             'hasAlert' => $this->isStrong($context->alerts[$account->id]),
         ])->all();
     }
@@ -266,6 +274,7 @@ class ForecastPresenter
 
         return $included->filter(fn (Account $account): bool => $this->isStrong($alerts[$account->id]))->sortBy(fn (Account $account): int => (int) $alerts[$account->id]['min'])->first()
             ?? $included->sortBy('position')->first(fn (Account $account): bool => $account->type === AccountType::Checking)
+            ?? $included->first(fn (Account $account): bool => ! ForecastAccounts::isProjectionOnly($account->type))
             ?? $included->first();
     }
 

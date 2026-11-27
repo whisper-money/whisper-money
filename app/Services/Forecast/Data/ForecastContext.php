@@ -4,6 +4,7 @@ namespace App\Services\Forecast\Data;
 
 use App\Models\Account;
 use App\Models\User;
+use App\Services\Forecast\ForecastAccounts;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -48,9 +49,11 @@ final readonly class ForecastContext
     }
 
     /**
-     * An account as the page names it, with the balance its warnings read against.
+     * An account as the page names it, with the balance its warnings read
+     * against (none for an account that never warns) and whether it is
+     * projected only.
      *
-     * @return array{id: string, name: string, type: mixed, currencyCode: string, minimumBalance: int|null, annualRateBps: int|null, alertThreshold: int|null}
+     * @return array{id: string, name: string, type: mixed, currencyCode: string, projectionOnly: bool, minimumBalance: int|null, annualRateBps: int|null, alertThreshold: int|null}
      */
     public function accountSummary(Account $account): array
     {
@@ -59,6 +62,7 @@ final readonly class ForecastContext
             'name' => $account->name,
             'type' => $account->type,
             'currencyCode' => $account->currency_code,
+            'projectionOnly' => ForecastAccounts::isProjectionOnly($account->type),
             'minimumBalance' => $this->projected[$account->id]['minimumBalance'],
             'annualRateBps' => $this->projectionAccount($account->id)->annualRateBps,
             'alertThreshold' => $this->thresholds[$account->id],

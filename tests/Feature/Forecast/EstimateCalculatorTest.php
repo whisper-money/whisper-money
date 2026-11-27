@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\ForecastEstimateBasis;
 use App\Enums\ForecastFrequency;
 use App\Models\Account;
@@ -41,7 +42,7 @@ function fittingBudget(User $user, int $limit, Category ...$categories): Budget
 
 beforeEach(function () {
     $this->user = User::factory()->create(['currency_code' => 'EUR']);
-    $this->account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     $this->food = forecastExpenseCategory($this->user);
     $this->groceries = forecastExpenseCategory($this->user, $this->food);
     $this->restaurants = forecastExpenseCategory($this->user, $this->food);
@@ -93,7 +94,7 @@ it('gathers uncategorized spend and categories under 30 a month into other spend
 });
 
 it('reads the 30 a month in each account\'s own currency', function () {
-    $yen = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'JPY']);
+    $yen = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'JPY']);
     $small = forecastExpenseCategory($this->user);
     $large = forecastExpenseCategory($this->user);
     foreach (['2026-08-05', '2026-09-05', '2026-10-05'] as $date) {
@@ -138,8 +139,8 @@ it('ignores a budget that follows labels or spans several parents', function (st
 })->with(['label', 'several parents']);
 
 it('splits a budget over the accounts in the user\'s currency by what each spent', function () {
-    $second = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
-    $dollars = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'USD']);
+    $second = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $dollars = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'USD']);
     forecastCharge($second, '2026-09-14', -30000, 'CARREFOUR', $this->groceries);
     foreach (['2026-08-14', '2026-09-14', '2026-10-14'] as $date) {
         forecastCharge($dollars, $date, -30000, 'WHOLE FOODS', $this->groceries);
@@ -178,7 +179,7 @@ it('takes the user\'s adjustment for the months it covers', function () {
 });
 
 it('weighs a shared account by the user\'s share of it', function () {
-    $shared = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR', 'ownership_percentage' => 50]);
+    $shared = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR', 'ownership_percentage' => 50]);
     foreach (['2026-08-05', '2026-09-05', '2026-10-05'] as $date) {
         forecastCharge($shared, $date, -10000, 'LUZ', $this->groceries);
     }
@@ -187,14 +188,14 @@ it('weighs a shared account by the user\'s share of it', function () {
 });
 
 it('reads a young account from its first month only', function () {
-    $young = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $young = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     forecastCharge($young, '2026-10-08', -40000, 'LIDL', $this->groceries);
 
     expect(estimatesFor($this->user)[$young->id.'|'.$this->food->id.'|2026-12']->amount)->toBe(40000);
 });
 
 it('takes a parent\'s concrete lines off its budget on any account the budget covers', function () {
-    $second = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $second = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     fittingBudget($this->user, 60000, $this->groceries);
     ForecastItem::factory()->amount(-20000)->create([
         'user_id' => $this->user->id,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\ForecastConfidence;
 use App\Enums\ForecastFrequency;
 use App\Enums\ForecastSuggestionKind;
@@ -19,7 +20,7 @@ function annualCandidates(User $user): array
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
 });
 
 it('suggests a yearly charge seen twice a year apart, always for review', function () {

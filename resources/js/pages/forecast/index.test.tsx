@@ -100,6 +100,43 @@ function selectedColumn(): string | null {
     );
 }
 
+describe('the forecast page with no account in it', () => {
+    it('lists the excluded accounts so one can be switched on', () => {
+        visit.mockClear();
+        render(
+            <ForecastPage
+                forecast={{
+                    scope: 'account',
+                    today: '2026-11-26',
+                    horizon: 6,
+                    isPro: true,
+                    account: null,
+                    accounts: [],
+                    accountChoices: [
+                        {
+                            id: 'house',
+                            name: 'House',
+                            type: 'real_estate',
+                            included: false,
+                            projectionOnly: true,
+                        },
+                    ],
+                }}
+                projectionInput={null}
+                reviewPrompt={{ hasLines: false }}
+            />,
+        );
+
+        const house = document.querySelector(
+            '[data-test="forecast-account-choice-house"]',
+        ) as HTMLElement;
+        expect(house).toHaveTextContent('Not in the forecast');
+
+        fireEvent.click(within(house).getByRole('checkbox'));
+        expect(visit.mock.calls.at(-1)?.[0]).toBe('/forecast/accounts/house');
+    });
+});
+
 describe('the forecast page', () => {
     it('opens the group that explains the problem and folds the rest on demand', () => {
         renderPage(forecast());
@@ -661,6 +698,92 @@ describe('editing the forecast', () => {
         expect(sheet('forecast-account-sheet')).toHaveTextContent(
             'Wanted minimum',
         );
+    });
+
+    it('lists every account, an excluded house can be switched on, and a projection-only one never asks for a minimum', () => {
+        visit.mockClear();
+        const data = editable({
+            accountChoices: [
+                ...forecast().accountChoices,
+                {
+                    id: 'broker',
+                    name: 'Broker',
+                    type: 'investment',
+                    included: true,
+                    projectionOnly: true,
+                },
+                {
+                    id: 'house',
+                    name: 'House',
+                    type: 'real_estate',
+                    included: false,
+                    projectionOnly: true,
+                },
+            ],
+        });
+        renderPage(data, editingInput());
+
+        fireEvent.click(
+            document.querySelector('[data-test="forecast-choose-accounts"]')!,
+        );
+
+        const accounts = sheet('forecast-accounts-sheet');
+        expect(
+            accounts.querySelector(
+                '[data-test="forecast-account-choice-broker"]',
+            ),
+        ).toHaveTextContent(
+            'Projection only: counts toward the total, never warns',
+        );
+
+        const house = accounts.querySelector(
+            '[data-test="forecast-account-choice-house"]',
+        ) as HTMLElement;
+        expect(house).toHaveTextContent('Not in the forecast');
+
+        fireEvent.click(within(house).getByRole('checkbox'));
+        const [url, options] = lastVisit();
+        expect(url).toBe('/forecast/accounts/house');
+        expect(options.method).toBe('patch');
+        expect(options.data).toEqual({ included: true });
+    });
+
+    it('says a projection-only account never warns instead of asking for its minimum', () => {
+        const base = forecast();
+        renderPage(
+            editable({
+                account: {
+                    ...base.account,
+                    type: 'investment',
+                    projectionOnly: true,
+                    alertThreshold: null,
+                },
+            }),
+            editingInput(),
+        );
+
+        expect(
+            document.querySelector('[data-test="forecast-kpis"]') ??
+                document.body,
+        ).toHaveTextContent('Projection only, never warns');
+
+        fireEvent.click(
+            document.querySelector('[data-test="forecast-change-minimum"]')!,
+        );
+        const settings = sheet('forecast-account-sheet');
+        expect(settings).not.toHaveTextContent('Wanted minimum');
+        expect(
+            settings.querySelector(
+                '[data-test="forecast-account-never-warns"]',
+            ),
+        ).not.toBeNull();
+
+        fireEvent.click(
+            settings.querySelector(
+                '[data-test="forecast-account-choose-accounts"]',
+            )!,
+        );
+        expect(sheet('forecast-accounts-sheet')).not.toBeNull();
     });
 
     it("accepts the update a line's last payments suggest", () => {

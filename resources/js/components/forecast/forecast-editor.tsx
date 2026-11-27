@@ -1,4 +1,5 @@
 import { store as acceptDrift } from '@/actions/App/Http/Controllers/Forecast/ForecastItemDriftController';
+import { ForecastAccountsSheet } from '@/components/forecast/forecast-account-choices';
 import { ForecastAccountSheet } from '@/components/forecast/forecast-account-sheet';
 import {
     ForecastAddSheet,
@@ -28,7 +29,8 @@ export type ForecastEditTarget =
           accountId?: string;
       }
     | { kind: 'add'; prefill?: AddPrefill }
-    | { kind: 'account' };
+    | { kind: 'account' }
+    | { kind: 'accounts' };
 
 interface ForecastEditor {
     open: (target: ForecastEditTarget) => void;
@@ -65,7 +67,7 @@ function targetAccountId(target: ForecastEditTarget): string | undefined {
 
 /**
  * Holds which edit sheet of the forecast is open (a line, an estimated
- * rest, a new line or the account's settings) and lets the table, the
+ * rest, a new line, the account's settings or the accounts covered) and lets the table, the
  * warnings and the figures open them. Out of the "All accounts" view, a
  * sheet edits the account the line, the estimate or the new line is on.
  */
@@ -165,6 +167,9 @@ export function ForecastEditorProvider({
             )}
             {sheet && target?.kind === 'account' && (
                 <ForecastAccountSheet key={sequence} {...sheet} />
+            )}
+            {sheet && target?.kind === 'accounts' && (
+                <ForecastAccountsSheet key={sequence} {...sheet} />
             )}
         </ForecastEditorContext.Provider>
     );

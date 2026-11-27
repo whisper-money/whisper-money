@@ -1,5 +1,6 @@
 import {
     accountMonths,
+    alertThreshold,
     editedDefinitions,
     estimateDeltas,
     evaluateAlert,
@@ -243,5 +244,24 @@ describe('recomputing the forecast', () => {
         expect(accountMonths(adjusted, 'checking')[1].close).toBe(
             accountMonths(input(), 'checking')[1].close - 15000,
         );
+    });
+});
+
+describe('the threshold the warnings read against', () => {
+    it('holds checking and savings to their minimum, else zero, and nothing else to anything', () => {
+        expect(alertThreshold('checking', null)).toBe(0);
+        expect(alertThreshold('savings', 30000)).toBe(30000);
+
+        for (const type of [
+            'credit_card',
+            'loan',
+            'investment',
+            'retirement',
+            'real_estate',
+            'others',
+        ]) {
+            expect(alertThreshold(type, null)).toBeNull();
+            expect(alertThreshold(type, 30000)).toBeNull();
+        }
     });
 });

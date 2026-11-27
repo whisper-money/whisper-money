@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/stat-tile';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
+import { isLiquidAccount } from '@/lib/forecast/edits';
 import {
     balanceTone,
     dayOf,
@@ -32,23 +33,38 @@ function KpiCard({ children }: { children: React.ReactNode }) {
     );
 }
 
+/** What the account is held to: its wanted minimum, none, or, out of checking and savings, nothing at all. */
+function wantedMinimumLabel(
+    forecast: ForecastData,
+    format: (amount: number) => string,
+): string {
+    const { account } = forecast;
+
+    if (!isLiquidAccount(account.type)) {
+        return account.projectionOnly
+            ? __('Projection only, never warns')
+            : __('Never warns');
+    }
+
+    return account.minimumBalance === null
+        ? __('No wanted minimum')
+        : __('Wanted minimum :amount', {
+              amount: format(account.minimumBalance),
+          });
+}
+
 /** "Wanted minimum 300 € · change": the account's threshold, and the way to its settings. */
 export function WantedMinimum({ forecast }: { forecast: ForecastData }) {
     const { formatAmount } = useFormatAmount();
     const editor = useForecastEditor();
-    const { minimumBalance } = forecast.account;
 
     return (
         <>
-            {minimumBalance === null
-                ? __('No wanted minimum')
-                : __('Wanted minimum :amount', {
-                      amount: formatAmount(
-                          minimumBalance,
-                          forecast.currencyCode,
-                          { fractionDigits: 0 },
-                      ),
-                  })}
+            {wantedMinimumLabel(forecast, (amount) =>
+                formatAmount(amount, forecast.currencyCode, {
+                    fractionDigits: 0,
+                }),
+            )}
             {editor && (
                 <>
                     {' · '}

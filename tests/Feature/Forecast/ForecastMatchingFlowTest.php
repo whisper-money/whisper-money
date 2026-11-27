@@ -85,7 +85,7 @@ describe('with the Forecast flag on', function () {
     it('queues nothing for a user without forecast lines', function () {
         $other = User::factory()->create();
         Feature::for($other)->activate(Forecast::class);
-        $account = Account::factory()->create(['user_id' => $other->id, 'currency_code' => 'EUR']);
+        $account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $other->id, 'currency_code' => 'EUR']);
         Queue::fake();
 
         forecastCharge($account, '2026-11-01', -90000, 'ALQUILER');
@@ -134,7 +134,7 @@ describe('with the Forecast flag off', function () {
 
     it('does not resolve the flag for a user without forecast lines', function () {
         $other = User::factory()->create();
-        $account = Account::factory()->create(['user_id' => $other->id, 'currency_code' => 'EUR']);
+        $account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $other->id, 'currency_code' => 'EUR']);
 
         forecastCharge($account, '2026-11-01', -90000, 'ALQUILER');
 

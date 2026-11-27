@@ -80,7 +80,7 @@ export function lineOrigin(
 
 /**
  * Whether a balance falls below the account's alert threshold: its wanted
- * minimum, else zero, or nothing at all for a card or a loan without one.
+ * minimum, else zero, or nothing at all for an account that never warns.
  */
 export function isShort(balance: number, threshold: number | null): boolean {
     return threshold !== null && balance < threshold;

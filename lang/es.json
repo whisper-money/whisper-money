@@ -4466,5 +4466,17 @@
     "Bars: the lowest balance of the month. Red, below 0; amber, below :minimum.": "Barras: mínimo del mes. Rojo, por debajo de 0; ámbar, por debajo de :minimum.",
     "Bars: the lowest balance of the month. Red, below 0.": "Barras: mínimo del mes. Rojo, por debajo de 0.",
     "Nothing planned this month.": "No hay nada previsto este mes.",
-    "paid": "pagado"
+    "paid": "pagado",
+    "Not in the forecast": "Fuera de la previsión",
+    "Projection only: counts toward the total, never warns": "Solo proyección: suma al total y nunca avisa",
+    "In the forecast": "En la previsión",
+    "Accounts in the forecast": "Cuentas en la previsión",
+    "This account counts toward the total but never warns you, and no transfer is offered from it: only checking and savings accounts do that.": "Esta cuenta suma al total, pero nunca te avisa ni se propone como origen de un traspaso: eso solo lo hacen las cuentas corrientes y de ahorro.",
+    "This account never warns you: only checking and savings accounts do.": "Esta cuenta nunca te avisa: solo lo hacen las cuentas corrientes y de ahorro.",
+    "projection only": "solo proyección",
+    "Choose accounts": "Elegir cuentas",
+    "Projection only, never warns": "Solo proyección, nunca avisa",
+    "Never warns": "Nunca avisa",
+    "None of your accounts is in the forecast: loans and properties are left out unless you include them. Tick one to see how its balance is going to evolve.": "Ninguna de tus cuentas está en la previsión: los préstamos y los inmuebles quedan fuera salvo que los incluyas. Marca una para ver cómo va a evolucionar su saldo.",
+    "Choose the accounts in the forecast": "Elegir las cuentas de la previsión"
 }

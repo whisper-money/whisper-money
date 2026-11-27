@@ -29,13 +29,14 @@ import {
 import { initiallyExpandedGroups } from '@/lib/forecast/plan-rows';
 import { cn } from '@/lib/utils';
 import {
+    type ForecastAccountTab,
     type ForecastAllData,
     type ForecastData,
     type ForecastHorizon,
 } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
-import { PlusIcon } from 'lucide-react';
+import { PlusIcon, Settings2Icon } from 'lucide-react';
 import { useId, useMemo, type ReactNode } from 'react';
 
 const HORIZONS: ForecastHorizon[] = [12, 6, 3];
@@ -61,13 +62,25 @@ export function ForecastMobileAddButton() {
     );
 }
 
-/** The phone's account and horizon pickers, as the system's own selects. */
+/** An account as the phone's picker names it: a warning or "projection only" after it. */
+function mobileAccountLabel(account: ForecastAccountTab): string {
+    if (account.hasAlert) {
+        return `${account.name} · ⚠`;
+    }
+
+    return account.projectionOnly
+        ? `${account.name} · ${__('projection only')}`
+        : account.name;
+}
+
+/** The phone's account and horizon pickers, as the system's own selects, and the way to choose the accounts. */
 function MobileControls({
     forecast,
 }: {
     forecast: ForecastData | ForecastAllData;
 }) {
     const id = useId();
+    const editor = useForecastEditor();
     const accountId = forecast.scope === 'all' ? 'all' : forecast.account.id;
     const visit = (account: string, horizon: ForecastHorizon) =>
         router.visit(forecastIndex({ query: { account, horizon } }).url, {
@@ -91,9 +104,7 @@ function MobileControls({
                 <option value="all">{__('All accounts')}</option>
                 {forecast.accounts.map((account) => (
                     <option key={account.id} value={account.id}>
-                        {account.hasAlert
-                            ? `${account.name} · ⚠`
-                            : account.name}
+                        {mobileAccountLabel(account)}
                     </option>
                 ))}
             </select>
@@ -118,6 +129,18 @@ function MobileControls({
                     </option>
                 ))}
             </select>
+            {editor && (
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-10 shrink-0"
+                    onClick={() => editor.open({ kind: 'accounts' })}
+                    aria-label={__('Choose accounts')}
+                    data-test="forecast-choose-accounts"
+                >
+                    <Settings2Icon />
+                </Button>
+            )}
         </div>
     );
 }

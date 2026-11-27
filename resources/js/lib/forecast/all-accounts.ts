@@ -229,6 +229,7 @@ export function accountSheetForecast(
         today: forecast.today,
         horizon: forecast.horizon,
         isPro: forecast.isPro,
+        accountChoices: forecast.accountChoices,
         currencyCode: account.currencyCode,
         account: summary,
         accounts: forecast.accounts,

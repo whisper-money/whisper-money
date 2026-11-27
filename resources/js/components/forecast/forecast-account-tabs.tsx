@@ -1,4 +1,6 @@
 import { index as forecastIndex } from '@/actions/App/Http/Controllers/ForecastController';
+import { useForecastEditor } from '@/components/forecast/forecast-editor';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
     type ForecastAccountTab,
@@ -6,6 +8,7 @@ import {
 } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
+import { Settings2Icon } from 'lucide-react';
 
 const PILL =
     'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] transition-colors';
@@ -22,13 +25,16 @@ interface ForecastAccountTabsProps {
 
 /**
  * "All accounts", then the accounts the forecast covers, one pill each, the
- * one with a problem marked with a red dot.
+ * one with a problem marked with a red dot and a projected-only one said
+ * so, then the way to choose the accounts.
  */
 export function ForecastAccountTabs({
     accounts,
     selectedId,
     horizon,
 }: ForecastAccountTabsProps) {
+    const editor = useForecastEditor();
+
     return (
         <nav aria-label={__('Account')} className="flex flex-wrap gap-2">
             <Link
@@ -55,6 +61,11 @@ export function ForecastAccountTabs({
                         data-test={`forecast-tab-${account.id}`}
                     >
                         {account.name}
+                        {account.projectionOnly && (
+                            <span className="text-xs opacity-70">
+                                {__('projection only')}
+                            </span>
+                        )}
                         {account.hasAlert && (
                             <span
                                 role="img"
@@ -65,6 +76,18 @@ export function ForecastAccountTabs({
                     </Link>
                 );
             })}
+            {editor && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-9 rounded-full text-muted-foreground"
+                    onClick={() => editor.open({ kind: 'accounts' })}
+                    data-test="forecast-choose-accounts"
+                >
+                    <Settings2Icon />
+                    {__('Choose accounts')}
+                </Button>
+            )}
         </nav>
     );
 }

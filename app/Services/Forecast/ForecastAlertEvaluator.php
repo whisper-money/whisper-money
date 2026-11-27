@@ -19,16 +19,17 @@ class ForecastAlertEvaluator
 
     /**
      * The balance an account must stay above: the minimum its owner wants,
-     * else zero. A credit card or a loan lives below zero, so without a
-     * minimum it has none.
+     * else zero. Only a liquid account (checking or savings) has one: a
+     * credit card or a loan lives below zero, and an investment or a
+     * property is projected, not spent from, so none of them ever warns.
      */
     public function threshold(AccountType $type, ?int $minimumBalance): ?int
     {
-        if ($minimumBalance !== null) {
-            return $minimumBalance;
+        if (! ForecastAccounts::isLiquid($type)) {
+            return null;
         }
 
-        return in_array($type, [AccountType::CreditCard, AccountType::Loan], true) ? null : 0;
+        return $minimumBalance ?? 0;
     }
 
     /**

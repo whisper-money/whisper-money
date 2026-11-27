@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\ForecastAccountSetting;
 use App\Models\ForecastAlert;
@@ -34,7 +35,7 @@ function ownedForecastRows(): array
         'dismissal' => [fn (User $owner) => ForecastDismissal::factory()->create(['user_id' => $owner->id])],
         'snapshot' => [fn (User $owner) => ForecastSnapshot::factory()->create(['user_id' => $owner->id])],
         'alert' => [fn (User $owner) => ForecastAlert::factory()->create(['user_id' => $owner->id])],
-        'account setting' => [fn (User $owner) => ForecastAccountSetting::factory()->for(Account::factory()->create(['user_id' => $owner->id]))->create()],
+        'account setting' => [fn (User $owner) => ForecastAccountSetting::factory()->for(Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $owner->id]))->create()],
         'excluded transaction' => [fn (User $owner) => ForecastExcludedTransaction::factory()->for(Transaction::factory()->create(['user_id' => $owner->id]))->create()],
     ];
 }

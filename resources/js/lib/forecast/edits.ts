@@ -373,11 +373,16 @@ export function alertThreshold(
     type: string,
     minimumBalance: number | null,
 ): number | null {
-    if (minimumBalance !== null) {
-        return minimumBalance;
+    if (!isLiquidAccount(type)) {
+        return null;
     }
 
-    return type === 'credit_card' || type === 'loan' ? null : 0;
+    return minimumBalance ?? 0;
+}
+
+/** Mirrors ForecastAccounts::isLiquid(): the accounts that warn and lend. */
+export function isLiquidAccount(type: string): boolean {
+    return type === 'checking' || type === 'savings';
 }
 
 function lineAmounts(
