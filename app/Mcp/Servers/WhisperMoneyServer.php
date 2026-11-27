@@ -295,6 +295,8 @@ class WhisperMoneyServer extends Server
      * page's tool counts and chatgpt-app-submission.json leave them out until
      * the flag reaches everyone.
      *
+     * @api Consumed by LandingToolCountTest, which static analysis does not scan.
+     *
      * @var list<class-string<Tool>>
      */
     public const FLAGGED_TOOLS = [

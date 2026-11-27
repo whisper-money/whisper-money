@@ -152,7 +152,7 @@ class ForecastPresenter
     {
         $months = $context->visibleMonths($account->id);
         $threshold = $context->thresholds[$account->id];
-        $levels = collect($months)->mapWithKeys(fn (array $month): array => [(string) $month['month'] => $this->alerts->levelOf($month, $threshold)?->value ?? 'ok']);
+        $levels = collect($months)->mapWithKeys(fn (array $month): array => [(string) $month['month'] => $this->alerts->levelOf($month, $threshold)->value ?? 'ok']);
 
         return [
             'account' => $account,
