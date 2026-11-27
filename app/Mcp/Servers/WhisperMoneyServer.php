@@ -23,6 +23,7 @@ use App\Mcp\Tools\DeleteLabel;
 use App\Mcp\Tools\DeleteTransaction;
 use App\Mcp\Tools\GetCashflow;
 use App\Mcp\Tools\GetCreditCardUsage;
+use App\Mcp\Tools\GetForecast;
 use App\Mcp\Tools\GetMonthlySavings;
 use App\Mcp\Tools\GetNetWorth;
 use App\Mcp\Tools\GetWidget;
@@ -163,6 +164,28 @@ app is kept in their books.
   past the goal but the medal is still waiting on the nightly sweep.
   `overview.streak` is the live saving streak instead, which can break, and is
   not itself a medal.
+- `get_forecast` is the cash-flow forecast of the app's Forecast page, and is
+  only listed for users who have that page. For each account the forecast
+  includes in a space (or only the one `account` asks for), in its own
+  currency, it gives every month from the one in progress:
+  `income`, `expenses` (of which `estimated_expenses` is the estimated day-to-day
+  spend, the rest planned charges), `min` and `min_date` (the lowest balance),
+  `close`, and `band`, how far the close and the lowest point may drop if the
+  estimated spend comes in high (`pessimistic_min`). A month's `alert_level` is
+  `strong` when its lowest balance falls below `alert_threshold` (the minimum the
+  user set, else 0; null for a card or loan without one, which never alerts),
+  `soft` when only `pessimistic_min` does, else `ok`; `alert.strong_month` is the
+  worst strong month, and `soft_months` lists the soft ones. `alert_causes` names the largest non-monthly charges of an
+  alert month, what explains the dip. With `plan: "free"` only the month in
+  progress and the next one are forecast (`months_shown`), whatever the `horizon`, as in the app:
+  never guess later months; `locked_strong_month_count` says how many of the
+  locked ones hold a strong alert, which the Pro plan shows. Without `account`,
+  `all_accounts` adds them up in the user's `currency` at today's rate (accounts
+  whose currency has no rate are left out and listed in
+  `unconverted_currencies`). Its `alert.level` is `split` when one account runs
+  short but the others' money above their own thresholds covers it (a transfer
+  between them fixes it; `transfer` names one when a single account can lend it
+  all), `short` when the total itself does not hold, else `soft` or `ok`.
 - To find recurring charges (subscriptions), use `search_transactions` and group
   the results by merchant and cadence yourself.
 - For totals over many transactions (spending per month, per label, per account,
@@ -266,6 +289,18 @@ over the limit, null while `credit_limit` is not set. A credit card has no balan
 MARKDOWN)]
 class WhisperMoneyServer extends Server
 {
+    /**
+     * Tools served only to users with a feature flag on (each one's
+     * shouldRegister() checks it). They are not public yet, so the landing
+     * page's tool counts and chatgpt-app-submission.json leave them out until
+     * the flag reaches everyone.
+     *
+     * @var list<class-string<Tool>>
+     */
+    public const FLAGGED_TOOLS = [
+        GetForecast::class,
+    ];
+
     /** @var array<int, class-string<Tool>> */
     protected array $tools = [
         // Read
@@ -275,6 +310,7 @@ class WhisperMoneyServer extends Server
         AggregateTransactions::class,
         GetCashflow::class,
         GetNetWorth::class,
+        GetForecast::class,
         GetCreditCardUsage::class,
         GetMonthlySavings::class,
         ListAccounts::class,
