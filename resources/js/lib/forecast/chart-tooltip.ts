@@ -57,3 +57,32 @@ export function chartTooltipData(
                 : [],
     };
 }
+
+/** The gap the phone's tooltip keeps from the screen's edges, in pixels. */
+const SCREEN_MARGIN = 8;
+
+/**
+ * Where the phone's tooltip starts, from the left of the chart: centred
+ * over the tapped bar, then pushed back inside the screen when the bar sits
+ * near an edge. All measures are in pixels; `barCenter` and `chartLeft` from
+ * the screen's left edge.
+ */
+export function mobileTooltipLeft({
+    barCenter,
+    chartLeft,
+    tooltipWidth,
+    screenWidth,
+}: {
+    barCenter: number;
+    chartLeft: number;
+    tooltipWidth: number;
+    screenWidth: number;
+}): number {
+    const widest = screenWidth - SCREEN_MARGIN - tooltipWidth;
+    const left = Math.max(
+        SCREEN_MARGIN,
+        Math.min(barCenter - tooltipWidth / 2, widest),
+    );
+
+    return Math.round(left - chartLeft);
+}

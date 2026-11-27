@@ -1,6 +1,9 @@
 import { shortAccountCount, shortAccounts } from '@/lib/forecast/all-accounts';
 import { type ForecastChartPoint } from '@/lib/forecast/chart-series';
-import { chartTooltipData } from '@/lib/forecast/chart-tooltip';
+import {
+    chartTooltipData,
+    mobileTooltipLeft,
+} from '@/lib/forecast/chart-tooltip';
 import { type ProjectedMonth } from '@/lib/forecast/types';
 import {
     type ForecastAccountForecast,
@@ -145,5 +148,26 @@ describe('chartTooltipData', () => {
         expect(
             chartTooltipData(point('future'), single)?.shortAccounts,
         ).toEqual([]);
+    });
+});
+
+describe('mobileTooltipLeft', () => {
+    const phone = { chartLeft: 32, tooltipWidth: 200, screenWidth: 390 };
+
+    it("centres the tooltip over the tapped bar, from the chart's left", () => {
+        expect(mobileTooltipLeft({ ...phone, barCenter: 195 })).toBe(63);
+    });
+
+    it('keeps it inside the screen next to the first and the last bar', () => {
+        expect(mobileTooltipLeft({ ...phone, barCenter: 40 })).toBe(8 - 32);
+        expect(mobileTooltipLeft({ ...phone, barCenter: 350 })).toBe(
+            390 - 8 - 200 - 32,
+        );
+    });
+
+    it("starts at the screen's margin when the tooltip is as wide as the screen", () => {
+        expect(
+            mobileTooltipLeft({ ...phone, tooltipWidth: 400, barCenter: 200 }),
+        ).toBe(8 - 32);
     });
 });
