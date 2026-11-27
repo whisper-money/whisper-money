@@ -133,7 +133,7 @@ class ForecastAccounts
     }
 
     /**
-     * @return Collection<int, Account> By name.
+     * @return Collection<int, Account> In the user's order, as the accounts page lists them.
      */
     private function live(User $user, string $spaceId): Collection
     {
@@ -141,6 +141,7 @@ class ForecastAccounts
             ->where('user_id', $user->id)
             ->forSpace($spaceId)
             ->notArchived()
+            ->orderBy('position')
             ->orderBy('name')
             ->get();
     }
