@@ -21,22 +21,23 @@ use Laravel\Pennant\Feature;
  * of it moves to a Daily checking account, where the card is spent; Payroll
  * also pays the mortgage. The loan and the house are accounts of their own,
  * and three investments only have a balance history: one growing, one
- * falling and one with three points. Today is 10 Nov 2026.
+ * falling and one with three points. Today is 10 Sep 2026, so the three
+ * months the estimates learn from are June to August, July's extra included.
  */
 beforeEach(function () {
-    $this->travelTo('2026-11-10 12:00:00');
+    $this->travelTo('2026-09-10 12:00:00');
     config(['subscriptions.enabled' => true]);
 
     $this->user = User::factory()->onboarded()->paywallSeen()->subscribed()->create(['currency_code' => 'EUR', 'name' => 'Jane Doe']);
     Feature::for($this->user)->activate(Forecast::class);
 
-    $this->payroll = realCaseAccount($this->user, 'Payroll', AccountType::Checking, ['2026-11-09' => 350000]);
-    $this->daily = realCaseAccount($this->user, 'Daily', AccountType::Checking, ['2026-11-09' => 300000]);
+    $this->payroll = realCaseAccount($this->user, 'Payroll', AccountType::Checking, ['2026-09-09' => 350000]);
+    $this->daily = realCaseAccount($this->user, 'Daily', AccountType::Checking, ['2026-09-09' => 300000]);
     $this->loan = realCaseAccount($this->user, 'Mortgage loan', AccountType::Loan, realCaseMonthEnds(-15_000_000, 60_000));
     $this->house = realCaseAccount($this->user, 'House', AccountType::RealEstate, ['2026-01-15' => 30_000_000]);
     $this->growing = realCaseAccount($this->user, 'Index fund', AccountType::Investment, realCaseMonthEnds(1_000_000, 30_000));
     $this->falling = realCaseAccount($this->user, 'Crypto', AccountType::Investment, realCaseMonthEnds(800_000, -20_000));
-    $this->short = realCaseAccount($this->user, 'Pension plan', AccountType::Investment, ['2026-08-31' => 500_000, '2026-09-30' => 510_000, '2026-10-31' => 520_000]);
+    $this->short = realCaseAccount($this->user, 'Pension plan', AccountType::Investment, ['2026-06-30' => 500_000, '2026-07-31' => 510_000, '2026-08-31' => 520_000]);
 
     $this->salary = forecastIncomeCategory($this->user, name: 'Salary');
     $bonus = forecastIncomeCategory($this->user, name: 'Phantom Shares');
@@ -46,14 +47,14 @@ beforeEach(function () {
     $spendCategories = array_map(fn (string $name) => forecastExpenseCategory($this->user, name: $name), array_combine(array_keys($spend), array_keys($spend)));
 
     $salaries = [
+        '2026-03' => ['2026-03-25', 284000, 'NOMINA MARZO ACME SL', 'ACME SL'],
+        '2026-04' => ['2026-04-23', 286000, 'ABONO NÓMINA ABRIL', 'Acme Spain, S.L.'],
         '2026-05' => ['2026-05-26', 285000, 'NOMINA MAYO ACME SL', 'ACME SL'],
         '2026-06' => ['2026-06-24', 286500, 'TRANSF. ACME SPAIN S.L. SALARIO', 'ACME SPAIN S.L.'],
         '2026-07' => ['2026-07-29', 290000, 'ABONO NOMINA 07/26', null],
         '2026-08' => ['2026-08-27', 287000, 'TRANSFERENCIA DE ACME SL CONCEPTO NOMINA 08', 'ACME'],
-        '2026-09' => ['2026-09-22', 286000, 'ABONO NÓMINA SEPTIEMBRE', 'Acme Spain, S.L.'],
-        '2026-10' => ['2026-10-28', 288000, 'NOMINA OCTUBRE', 'ACME SPAIN SL'],
     ];
-    $moved = ['2026-05' => [1, 171000], '2026-06' => [2, 172000], '2026-07' => [1, 173000], '2026-08' => [3, 172000], '2026-09' => [1, 171000], '2026-10' => [2, 173000], '2026-11' => [2, 172000]];
+    $moved = ['2026-03' => [2, 171000], '2026-04' => [1, 173000], '2026-05' => [1, 171000], '2026-06' => [2, 172000], '2026-07' => [1, 173000], '2026-08' => [3, 172000], '2026-09' => [2, 172000]];
     $index = 0;
 
     foreach ($salaries as [$date, $amount, $description, $payer]) {
@@ -69,7 +70,7 @@ beforeEach(function () {
 
         foreach ($spend as $name => $days) {
             foreach ($days as $spendDay => $spent) {
-                if (sprintf('%s-%02d', $month, $spendDay) < '2026-11-10') {
+                if (sprintf('%s-%02d', $month, $spendDay) < '2026-09-10') {
                     forecastCharge($this->daily, sprintf('%s-%02d', $month, $spendDay), -$spent, strtoupper($name).' CARD '.$spendDay, $spendCategories[$name]);
                 }
             }
@@ -129,7 +130,7 @@ it('projects the move from Payroll to Daily every month, once this month is done
     $moves = collect($plan->transferEstimates);
 
     expect($moves->every(fn (TransferEstimate $move): bool => $move->fromAccountId === $this->payroll->id && $move->toAccountId === $this->daily->id))->toBeTrue()
-        ->and($moves->firstWhere('month', '2026-11'))->amount->toBe(0)->moved->toBe(172000)
+        ->and($moves->firstWhere('month', '2026-09'))->amount->toBe(0)->moved->toBe(172000)
         ->and($moves->where('amount', 172000)->pluck('month')->all())->toBe(array_map(fn (int $offset): string => now()->startOfMonth()->addMonthsNoOverflow($offset)->format('Y-m'), range(1, 11)));
 });
 

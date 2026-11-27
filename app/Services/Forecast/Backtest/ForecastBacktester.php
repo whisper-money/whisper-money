@@ -28,7 +28,10 @@ use Illuminate\Database\Eloquent\Collection;
  * A cut-off is the first day of a month and the forecast starts on it: that
  * day's balance is its opening, and the months after it are compared at
  * their close (the month of the cut-off itself is the first). Only accounts
- * with a balance known on the cut-off are measured. Liquid accounts are
+ * whose balance was known for the three complete months before the cut-off
+ * are measured, so a forecast is never judged on months it had nothing to
+ * learn from. What really happened is the balance the app knows at each
+ * month end, the last one recorded on or before it. Liquid accounts are
  * measured one by one; the all-accounts total adds up every measured account
  * in the user's currency (nothing is converted, so the backtest never reads
  * exchange rates). Income and spend are compared per row the forecast had
@@ -72,7 +75,29 @@ class ForecastBacktester
     ) {}
 
     /**
-     * @param  list<string>  $cutoffs  First days of months (`Y-m-d`), oldest first.
+     * The first day of each month a forecast is built at: for each horizon,
+     * the latest `$perHorizon` months that already have that many complete
+     * months after them, with the horizons measured at it. Oldest first.
+     *
+     * @return array<string, list<int>> Horizons by `Y-m-d` cut-off.
+     */
+    public static function cutoffs(string $today, int $perHorizon): array
+    {
+        $cutoffs = [];
+
+        foreach (self::HORIZONS as $horizon) {
+            foreach (range(0, $perHorizon - 1) as $index) {
+                $cutoffs[ForecastCalendar::monthStart($today, -$horizon - $index)][] = $horizon;
+            }
+        }
+
+        ksort($cutoffs);
+
+        return $cutoffs;
+    }
+
+    /**
+     * @param  array<string, list<int>>  $cutoffs  The horizons to measure, by cut-off (the first day of a month, `Y-m-d`), oldest first.
      * @param  string  $actualsEnd  The last day (`Y-m-d`) what happened is known for.
      * @return list<BacktestObservation>
      */
@@ -84,15 +109,17 @@ class ForecastBacktester
             return [];
         }
 
-        $lookup = BalanceLookup::forAccounts($included->modelKeys(), Carbon::parse(self::averageFrom($cutoffs[0])), Carbon::parse($actualsEnd));
-        $flows = $this->actualFlows($user, $spaceId, $included, $cutoffs[0], $actualsEnd);
+        $first = (string) array_key_first($cutoffs);
+        $lookup = BalanceLookup::forAccounts($included->modelKeys(), Carbon::parse(self::averageFrom($first)), Carbon::parse($actualsEnd));
+        $flows = $this->actualFlows($user, $spaceId, $included, $first, $actualsEnd);
         $observations = [];
 
-        foreach ($cutoffs as $cutoff) {
-            $horizons = array_values(array_filter(self::HORIZONS, fn (int $horizon): bool => ForecastCalendar::horizonEnd($cutoff, $horizon) <= $actualsEnd));
-            $measured = $included->filter(fn (Account $account): bool => $lookup->hasHistoryOn($account->id, Carbon::parse($cutoff)))->values();
+        foreach ($cutoffs as $cutoff => $horizons) {
+            $cutoff = (string) $cutoff;
+            // Only accounts known for the whole three months the estimates learn from.
+            $measured = $included->filter(fn (Account $account): bool => $lookup->hasHistoryOn($account->id, Carbon::parse(self::averageFrom($cutoff))))->values();
 
-            if ($horizons !== [] && $measured->isNotEmpty()) {
+            if ($measured->isNotEmpty()) {
                 array_push($observations, ...$this->observeCutoff($user, $spaceId, $measured, $lookup, $flows, $cutoff, $horizons));
             }
         }

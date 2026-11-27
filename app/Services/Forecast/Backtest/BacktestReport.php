@@ -33,9 +33,10 @@ class BacktestReport
 
     /**
      * @param  list<string>  $series  In the order to report them.
+     * @param  int  $minCount  Rows with fewer observations are left out.
      * @return list<array{series: string, horizon: int, count: int, medianError: float|null, p10: float|null, p90: float|null, insideBand: float|null, weightedError: float|null}>
      */
-    public function rows(array $series): array
+    public function rows(array $series, int $minCount = 1): array
     {
         $rows = [];
 
@@ -44,6 +45,10 @@ class BacktestReport
             ksort($byHorizon);
 
             foreach ($byHorizon as $horizon => $observations) {
+                if (count($observations) < $minCount) {
+                    continue;
+                }
+
                 $rows[] = ['series' => $name, 'horizon' => $horizon, ...self::summary($observations)];
             }
         }

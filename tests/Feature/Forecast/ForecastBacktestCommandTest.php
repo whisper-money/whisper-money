@@ -1,8 +1,8 @@
 <?php
 
-use App\Console\Commands\ForecastBacktest;
 use App\Enums\AccountType;
 use App\Models\Account;
+use App\Models\Budget;
 use App\Models\AccountBalance;
 use App\Models\ForecastItem;
 use App\Models\User;
@@ -70,49 +70,53 @@ function backtestRows(string $output): array
     return $rows;
 }
 
-it('picks the cut-offs that still have one, three and six months of actuals after them', function () {
-    expect(ForecastBacktest::cutoffs('2026-11-15', 1))->toBe(['2026-05-01', '2026-08-01', '2026-10-01'])
-        ->and(ForecastBacktest::cutoffs('2026-11-15', 6))->toHaveCount(11)
-        ->and(ForecastBacktest::cutoffs('2026-11-15', 6)[0])->toBe('2025-12-01');
+it('picks, for each horizon, the latest cut-offs that already have that many months of actuals after them', function () {
+    expect(ForecastBacktester::cutoffs('2026-11-15', 1))->toBe(['2026-05-01' => [6], '2026-08-01' => [3], '2026-10-01' => [1]])
+        ->and(ForecastBacktester::cutoffs('2026-11-15', 6))->toHaveCount(11)
+        ->and(ForecastBacktester::cutoffs('2026-11-15', 6)['2026-05-01'])->toBe([1, 3, 6])
+        ->and(array_key_first(ForecastBacktester::cutoffs('2026-11-15', 6)))->toBe('2025-12-01');
 });
 
 it('measures the forecast against what happened, next to a flat balance and the average net flow', function () {
-    Artisan::call('forecast:backtest', ['--cutoffs' => 1]);
+    Artisan::call('forecast:backtest', ['--cutoffs' => 1, '--min-count' => 1, '--min-users' => 1]);
     $output = Artisan::output();
     $rows = backtestRows($output);
 
-    expect($output)->toContain('Eligible users: 1 (1 active and well kept, 0 left out because they already set up a forecast)')
+    expect($output)->toContain('Eligible users: 1 (1 active and well kept; left out: 0 who already set up a forecast, 0 with a budget created after the first cut-off)')
         ->toContain('Cut-offs: 3, from 2026-05-01 to 2026-10-01; actuals up to 2026-10-31')
         ->toContain('Baselines: a flat balance and the 3-month average net flow')
-        // Each cut-off counts at every horizon it has actuals for: three at one month, two at three, one at six.
+        // One cut-off per horizon: 1 Oct, 1 Aug and 1 May.
         // N, median |error|, p10 and p90 of actual / forecast, inside the band.
-        ->and($rows[BacktestSeries::ACCOUNT.' @ 1'])->toBe(['3', '0.0 %', '1.00', '1.00', '100.0 %'])
+        ->and($rows[BacktestSeries::ACCOUNT.' @ 1'])->toBe(['1', '0.0 %', '1.00', '1.00', '100.0 %'])
         ->and($rows[BacktestSeries::ACCOUNT.' @ 6'])->toBe(['1', '0.0 %', '1.00', '1.00', '100.0 %'])
-        // A flat balance misses 1,500 a month: out of 8,500, 13,000 and 16,000 after one month.
-        ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 1'])->toBe(['3', '11.5 %', '1.11', '1.20', '–'])
-        // 9,000 out of 16,000 after six months, from 7,000.
+        // A flat balance misses 1,500 a month: 1,500 out of 16,000 after one month, 9,000 after six.
+        ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 1'])->toBe(['1', '9.4 %', '1.10', '1.10', '–'])
+        ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 3'])->toBe(['1', '28.1 %', '1.39', '1.39', '–'])
         ->and($rows[BacktestSeries::ACCOUNT_FLAT.' @ 6'])->toBe(['1', '56.3 %', '2.29', '2.29', '–'])
         ->and($rows[BacktestSeries::ACCOUNT_NET_FLOW.' @ 6'])->toBe(['1', '0.0 %', '1.00', '1.00', '–'])
-        ->and($rows[BacktestSeries::TOTAL.' @ 3'])->toBe(['2', '0.0 %', '1.00', '1.00', '100.0 %'])
+        ->and($rows[BacktestSeries::TOTAL.' @ 3'])->toBe(['1', '0.0 %', '1.00', '1.00', '100.0 %'])
         // N, median |error|, WAPE, p10, p90, inside the band.
-        ->and($rows[BacktestSeries::INCOME_CATEGORY.' @ 1'])->toBe(['3', '0.0 %', '0.0 %', '1.00', '1.00', '100.0 %'])
+        ->and($rows[BacktestSeries::INCOME_CATEGORY.' @ 1'])->toBe(['1', '0.0 %', '0.0 %', '1.00', '1.00', '100.0 %'])
         ->and($rows[BacktestSeries::EXPENSE_MONTH.' @ 6'])->toBe(['1', '0.0 %', '0.0 %', '1.00', '1.00', '100.0 %']);
 });
 
-it('leaves out users with too little history and users who already set up a forecast', function () {
+it('leaves out users with too little history, who set up a forecast or whose budgets came after the first cut-off', function () {
     $newcomer = User::factory()->create();
     backtestSteadyAccount($newcomer, 'Young account', '2026-08');
     $planner = User::factory()->create();
     $plannerAccount = backtestSteadyAccount($planner, 'Planned account');
     ForecastItem::factory()->amount(-10000)->create(['user_id' => $planner->id, 'account_id' => $plannerAccount->id]);
+    $budgeter = User::factory()->create();
+    backtestSteadyAccount($budgeter, 'Budgeted account');
+    Budget::factory()->create(['user_id' => $budgeter->id, 'created_at' => '2026-09-01 10:00:00']);
 
-    Artisan::call('forecast:backtest', ['--cutoffs' => 1]);
+    Artisan::call('forecast:backtest', ['--cutoffs' => 1, '--min-count' => 1, '--min-users' => 1]);
 
-    expect(Artisan::output())->toContain('Eligible users: 1 (2 active and well kept, 1 left out because they already set up a forecast)');
+    expect(Artisan::output())->toContain('Eligible users: 1 (3 active and well kept; left out: 1 who already set up a forecast, 1 with a budget created after the first cut-off)');
 });
 
 it('prints aggregate figures only, nothing that tells a user apart', function () {
-    Artisan::call('forecast:backtest', ['--cutoffs' => 1]);
+    Artisan::call('forecast:backtest', ['--cutoffs' => 1, '--min-count' => 1, '--min-users' => 1]);
     $output = Artisan::output();
 
     foreach ([$this->user->id, $this->user->email, $this->user->name, $this->checking->id, $this->checking->name, 'Salary', 'Groceries', 'PAYROLL', 'SUPERMARKET', '1600000', '16,000'] as $private) {
@@ -124,7 +128,7 @@ it('writes nothing, and stops any statement that would', function () {
     $tables = ['forecast_items', 'forecast_snapshots', 'forecast_alerts', 'forecast_account_settings', 'forecast_estimate_adjustments', 'jobs', 'cache'];
     $before = array_map(fn (string $table): int => DB::table($table)->count(), $tables);
 
-    Artisan::call('forecast:backtest', ['--cutoffs' => 1]);
+    Artisan::call('forecast:backtest', ['--cutoffs' => 1, '--min-count' => 1, '--min-users' => 1]);
 
     expect(array_map(fn (string $table): int => DB::table($table)->count(), $tables))->toBe($before);
 
@@ -134,7 +138,20 @@ it('writes nothing, and stops any statement that would', function () {
         return [];
     });
 
-    expect(fn () => Artisan::call('forecast:backtest', ['--cutoffs' => 1]))->toThrow(BacktestWriteRefused::class);
+    expect(fn () => Artisan::call('forecast:backtest', ['--cutoffs' => 1, '--min-count' => 1, '--min-users' => 1]))->toThrow(BacktestWriteRefused::class);
+});
+
+it('prints only counts for a small cohort, leaves out rows with few observations and fails when a space could not be measured', function () {
+    Artisan::call('forecast:backtest', ['--cutoffs' => 1]);
+    expect(Artisan::output())->toContain('Too few eligible users')->not->toContain(BacktestSeries::ACCOUNT);
+
+    Artisan::call('forecast:backtest', ['--cutoffs' => 6, '--min-count' => 3, '--min-users' => 1]);
+    expect(backtestRows(Artisan::output()))->toHaveKey(BacktestSeries::ACCOUNT.' @ 1')->not->toHaveKey(BacktestSeries::ACCOUNT.' @ 6');
+
+    $this->mock(ForecastBacktester::class)->shouldReceive('observe')->andThrow(new LogicException('a message about someone'));
+
+    expect(Artisan::call('forecast:backtest', ['--cutoffs' => 1, '--min-users' => 1]))->toBe(1)
+        ->and(Artisan::output())->toContain('Spaces measured: 0 of 1')->toContain('1 space(s) failed with LogicException')->not->toContain('a message about someone');
 });
 
 it('reports the median error, the spread of actual over forecast, the band and the weighted error', function () {

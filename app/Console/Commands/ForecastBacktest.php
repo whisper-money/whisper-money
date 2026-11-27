@@ -26,16 +26,26 @@ use Throwable;
  * It only reads, so it can run against production (`--connection=prod`,
  * whose credentials are read only): every statement but a read is stopped
  * before it reaches the database, and the cache, queue and mail are kept in
- * memory. It prints aggregate figures only, never anything about one user,
+ * memory. The statement check is a tripwire on top of the read-only
+ * credentials, which are the real guarantee. It prints aggregate figures
+ * only (a row with fewer than `--min-count` observations is left out), never
+ * anything about one user,
  * and does not report failures to the error tracker (their messages could
  * carry a user's data): it counts them by exception class.
  */
 class ForecastBacktest extends Command
 {
+    /**
+     * Words that only a statement that writes or locks carries.
+     */
+    private const WRITES = '/\b(insert|update|delete|replace|merge|alter|drop|truncate|create|grant|revoke|lock|outfile|dumpfile)\b/i';
+
     protected $signature = 'forecast:backtest
         {--connection= : The database connection to read, e.g. prod; the default connection when left out}
         {--cutoffs=6 : How many cut-offs each horizon is measured over}
-        {--min-categorised=90 : The share (%) of the last 3 months\' money a user must have in a category}';
+        {--min-categorised=90 : The share (%) of the last 3 months\' money a user must have in a category}
+        {--min-users=20 : With fewer eligible users than this, only the counts are printed}
+        {--min-count=10 : Rows with fewer observations than this are left out, so no figure stands for one user}';
 
     protected $description = 'Backtest the forecast against what really happened, over the most active users (aggregate figures only, read only)';
 
@@ -45,17 +55,26 @@ class ForecastBacktest extends Command
 
         $today = now()->toDateString();
         $actualsEnd = ForecastCalendar::previousDay(ForecastCalendar::monthStart($today));
-        $cutoffs = self::cutoffs($today, max((int) $this->option('cutoffs'), 1));
-        $cohort = BacktestCohort::select($today, ((float) $this->option('min-categorised')) / 100);
+        $cutoffs = ForecastBacktester::cutoffs($today, max((int) $this->option('cutoffs'), 1));
+        $cohort = BacktestCohort::select($today, ((float) $this->option('min-categorised')) / 100, (string) array_key_first($cutoffs));
 
-        $this->info("Eligible users: {$cohort->users->count()} ({$cohort->active} active and well kept, {$cohort->withForecast} left out because they already set up a forecast)");
-        $this->info('Cut-offs: '.count($cutoffs).', from '.$cutoffs[0].' to '.end($cutoffs).'; actuals up to '.$actualsEnd);
+        $this->info("Eligible users: {$cohort->users->count()} ({$cohort->active} active and well kept; left out: {$cohort->withForecast} who already set up a forecast, {$cohort->withLaterBudgets} with a budget created after the first cut-off)");
+        $this->info('Cut-offs: '.count($cutoffs).', from '.array_key_first($cutoffs).' to '.array_key_last($cutoffs).'; actuals up to '.$actualsEnd);
+
+        if ($cohort->users->count() < max((int) $this->option('min-users'), 1)) {
+            $this->warn('Too few eligible users to report figures that stand for no one.');
+
+            return self::SUCCESS;
+        }
 
         $report = new BacktestReport;
         $failures = [];
+        $spaces = 0;
 
         foreach ($cohort->users as $user) {
             foreach ($accounts->spaceIds($user) as $spaceId) {
+                $spaces++;
+
                 try {
                     $report->add($backtester->observe($user, $spaceId, $cutoffs, $actualsEnd));
                 } catch (BacktestWriteRefused $exception) {
@@ -66,36 +85,14 @@ class ForecastBacktest extends Command
             }
         }
 
-        $this->printReport($report);
+        $this->info('Spaces measured: '.($spaces - array_sum($failures))." of {$spaces}");
+        $this->printReport($report, max((int) $this->option('min-count'), 1));
 
         foreach ($failures as $class => $count) {
-            $this->warn("{$count} space(s) failed with {$class}");
+            $this->warn("{$count} space(s) failed with {$class}: the figures above leave them out");
         }
 
-        return self::SUCCESS;
-    }
-
-    /**
-     * The first day of each month a forecast is built at: for each horizon,
-     * the latest `$perHorizon` months that already have that many complete
-     * months after them. Oldest first.
-     *
-     * @return list<string>
-     */
-    public static function cutoffs(string $today, int $perHorizon): array
-    {
-        $cutoffs = [];
-
-        foreach (ForecastBacktester::HORIZONS as $horizon) {
-            foreach (range(0, $perHorizon - 1) as $index) {
-                $cutoffs[] = ForecastCalendar::monthStart($today, -$horizon - $index);
-            }
-        }
-
-        $cutoffs = array_values(array_unique($cutoffs));
-        sort($cutoffs);
-
-        return $cutoffs;
+        return $failures === [] ? self::SUCCESS : self::FAILURE;
     }
 
     /**
@@ -108,7 +105,7 @@ class ForecastBacktest extends Command
         config(['database.default' => $connection]);
         DB::setDefaultConnection($connection);
         DB::connection($connection)->beforeExecuting(function (string $query): void {
-            if (preg_match('/^\s*\(?\s*(select|with|show|describe|explain)\b/i', $query) !== 1) {
+            if (preg_match('/^\s*\(?\s*(select|with|show|describe|explain)\b/i', $query) !== 1 || preg_match(self::WRITES, $query) === 1) {
                 throw BacktestWriteRefused::for($query);
             }
         });
@@ -119,17 +116,18 @@ class ForecastBacktest extends Command
         app('mail.manager')->setDefaultDriver('array');
     }
 
-    private function printReport(BacktestReport $report): void
+    private function printReport(BacktestReport $report, int $minCount): void
     {
         $this->newLine();
         $this->info('Baselines: a flat balance and the 3-month average net flow (the v1 forecast cannot be rebuilt as of a cut-off).');
+        $this->info('The all-accounts total adds the accounts in the user\'s own currency only; its band is the sum of theirs.');
         $this->table(
             ['Closing balance', 'Months', 'N', 'Median |error|', 'p10 actual/forecast', 'p90 actual/forecast', 'Inside band'],
-            array_map(fn (array $row): array => [$row['series'], $row['horizon'], $row['count'], self::percent($row['medianError']), self::ratio($row['p10']), self::ratio($row['p90']), self::percent($row['insideBand'])], $report->rows(BacktestSeries::BALANCES)),
+            array_map(fn (array $row): array => [$row['series'], $row['horizon'], $row['count'], self::percent($row['medianError']), self::ratio($row['p10']), self::ratio($row['p90']), self::percent($row['insideBand'])], $report->rows(BacktestSeries::BALANCES, $minCount)),
         );
         $this->table(
             ['Income and spend', 'Month', 'N', 'Median |error|', 'WAPE', 'p10 actual/forecast', 'p90 actual/forecast', 'Inside band'],
-            array_map(fn (array $row): array => [$row['series'], $row['horizon'], $row['count'], self::percent($row['medianError']), self::percent($row['weightedError']), self::ratio($row['p10']), self::ratio($row['p90']), self::percent($row['insideBand'])], $report->rows(BacktestSeries::FLOWS)),
+            array_map(fn (array $row): array => [$row['series'], $row['horizon'], $row['count'], self::percent($row['medianError']), self::percent($row['weightedError']), self::ratio($row['p10']), self::ratio($row['p90']), self::percent($row['insideBand'])], $report->rows(BacktestSeries::FLOWS, $minCount)),
         );
     }
 

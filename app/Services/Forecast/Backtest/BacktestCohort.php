@@ -2,6 +2,7 @@
 
 namespace App\Services\Forecast\Backtest;
 
+use App\Models\Budget;
 use App\Models\ForecastEstimateAdjustment;
 use App\Models\ForecastExcludedTransaction;
 use App\Models\ForecastItem;
@@ -20,7 +21,9 @@ use Illuminate\Database\Query\Builder;
  *
  * A user who already set up a forecast (lines, adjustments or one-offs) is
  * left out: what they entered by hand is known today, not at the cut-offs,
- * so it would leak the future into the past.
+ * so it would leak the future into the past. So is a user with a budget
+ * created after the first cut-off, since a budget replaces its category's
+ * median in the estimate.
  */
 class BacktestCohort
 {
@@ -33,6 +36,7 @@ class BacktestCohort
     public function __construct(
         public readonly int $active = 0,
         public readonly int $withForecast = 0,
+        public readonly int $withLaterBudgets = 0,
         /** @var Collection<int, User> */
         public readonly Collection $users = new Collection,
     ) {}
@@ -40,16 +44,19 @@ class BacktestCohort
     /**
      * @param  string  $today  `Y-m-d`.
      * @param  float  $minCategorisedShare  Between 0 and 1.
+     * @param  string  $firstCutoff  `Y-m-d`, the earliest day a forecast is built at.
      */
-    public static function select(string $today, float $minCategorisedShare): self
+    public static function select(string $today, float $minCategorisedShare, string $firstCutoff): self
     {
         $active = User::query()->whereIn('id', self::activeUserIds($today, $minCategorisedShare))->pluck('id')->map(strval(...))->all();
         $withForecast = array_values(array_intersect($active, self::usersWithForecastData()));
-        $userIds = array_values(array_diff($active, $withForecast));
+        $withLaterBudgets = array_values(array_diff(array_intersect($active, self::usersWithBudgetsSince($firstCutoff)), $withForecast));
+        $userIds = array_values(array_diff($active, $withForecast, $withLaterBudgets));
 
         return new self(
             count($active),
             count($withForecast),
+            count($withLaterBudgets),
             User::query()->whereIn('id', $userIds)->orderBy('id')->get(),
         );
     }
@@ -97,5 +104,13 @@ class BacktestCohort
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function usersWithBudgetsSince(string $day): array
+    {
+        return Budget::query()->toBase()->where('created_at', '>=', $day)->distinct()->pluck('user_id')->map(strval(...))->all();
     }
 }
