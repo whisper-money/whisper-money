@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useForecastSave } from '@/hooks/use-forecast-save';
+import { cn } from '@/lib/utils';
 import { type ForecastAccountChoice } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { useId } from 'react';
@@ -27,8 +28,11 @@ function choiceDescription(choice: ForecastAccountChoice): string {
  */
 export function ForecastAccountChoices({
     choices,
+    hideLegend = false,
 }: {
     choices: ForecastAccountChoice[];
+    /** When a title around the list already says what it is. */
+    hideLegend?: boolean;
 }) {
     const id = useId();
     const { save, processing } = useForecastSave();
@@ -42,7 +46,12 @@ export function ForecastAccountChoices({
             className="flex flex-col gap-3"
             data-test="forecast-account-choices"
         >
-            <legend className="mb-1 text-sm font-medium">
+            <legend
+                className={cn(
+                    'mb-1 text-sm font-medium',
+                    hideLegend && 'sr-only',
+                )}
+            >
                 {__('Accounts in the forecast')}
             </legend>
             {choices.map((choice) => (
@@ -95,7 +104,10 @@ export function ForecastAccountsSheet({
                 </Button>
             }
         >
-            <ForecastAccountChoices choices={forecast.accountChoices} />
+            <ForecastAccountChoices
+                choices={forecast.accountChoices}
+                hideLegend
+            />
         </ForecastSheet>
     );
 }
