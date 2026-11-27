@@ -1,4 +1,8 @@
 import { index, run } from '@/actions/App/Http/Controllers/AdminController';
+import {
+    type AdminIntegrationRequest,
+    IntegrationRequestList,
+} from '@/components/admin/integration-request-list';
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
@@ -64,6 +68,7 @@ type CommandGroups = Record<string, Record<string, boolean>>;
 interface Props {
     commands: CommandGroups;
     users: Paginated<AdminUser>;
+    integrationRequests: AdminIntegrationRequest[];
     result: CommandResult | null;
 }
 
@@ -371,9 +376,15 @@ function UserList({ users }: { users: Paginated<AdminUser> }) {
 
 /**
  * Internal tools, behind the ADMIN_EMAIL account. Read-only on the user side;
- * the only thing it writes is whichever curated Artisan command was picked.
+ * it writes only whichever curated Artisan command was picked and the status
+ * of integration requests.
  */
-export default function Admin({ commands, users, result }: Props) {
+export default function Admin({
+    commands,
+    users,
+    integrationRequests,
+    result,
+}: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Admin')} />
@@ -388,6 +399,7 @@ export default function Admin({ commands, users, result }: Props) {
 
                 <div className="space-y-8">
                     <CommandRunner commands={commands} result={result} />
+                    <IntegrationRequestList requests={integrationRequests} />
                     <UserList users={users} />
                 </div>
             </div>

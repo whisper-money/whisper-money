@@ -4483,5 +4483,21 @@
     "Choose the accounts in the forecast": "Elegir las cuentas de la previsión",
     "Start over": "Empezar de cero",
     "Start your forecast over?": "¿Empezar tu previsión de cero?",
-    "Your edits, yearly payments, account settings and alerts in this space are deleted, and the forecast is worked out again from your transactions. This cannot be undone.": "Se borran tus cambios, pagos anuales, ajustes de cuentas y alertas de este espacio, y la previsión se vuelve a calcular a partir de tus movimientos. No se puede deshacer."
+    "Your edits, yearly payments, account settings and alerts in this space are deleted, and the forecast is worked out again from your transactions. This cannot be undone.": "Se borran tus cambios, pagos anuales, ajustes de cuentas y alertas de este espacio, y la previsión se vuelve a calcular a partir de tus movimientos. No se puede deshacer.",
+    "Approved": "Aprobada",
+    "Rejected": "Rechazada",
+    "Approve": "Aprobar",
+    "Change status": "Cambiar estado",
+    "Comment": "Comentario",
+    "(shown to users)": "(visible para los usuarios)",
+    "(optional, shown to users)": "(opcional, visible para los usuarios)",
+    "Request": "Solicitud",
+    "Votes": "Votos",
+    "Submitted": "Enviada",
+    "Filter by status": "Filtrar por estado",
+    "No integration requests found.": "No hay solicitudes de integración.",
+    "Tell users why this integration is not doable.": "Explica a los usuarios por qué esta integración no es viable.",
+    "Pending review: :count": "Pendientes de revisión: :count",
+    "No requests with this status.": "No hay solicitudes con este estado.",
+    "This status has no comment: the current one will be removed.": "Este estado no lleva comentario: se borrará el actual."
 }

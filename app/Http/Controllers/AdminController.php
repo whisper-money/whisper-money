@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\IntegrationRequestStatus;
 use App\Http\Requests\RunAdminCommandRequest;
+use App\Models\IntegrationRequest;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Artisan;
@@ -94,8 +96,38 @@ class AdminController extends Controller
                     'created_at' => $user->created_at?->toIso8601String(),
                     'last_active_at' => $user->last_active_at?->toIso8601String(),
                 ]),
+            'integrationRequests' => $this->integrationRequests(),
             'result' => session('commandResult'),
         ]);
+    }
+
+    /**
+     * Every integration request, the ones waiting for review first.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function integrationRequests(): array
+    {
+        return IntegrationRequest::query()
+            ->withCount('votes')
+            // Authors who deleted their account are soft-deleted, but their
+            // requests linger; load them trashed so each row still says who.
+            ->with(['user' => fn ($user) => $user->withTrashed()->select('id', 'email')])
+            ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [IntegrationRequestStatus::Pending->value])
+            ->orderByDesc('votes_count')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (IntegrationRequest $request): array => [
+                'id' => $request->id,
+                'name' => $request->name,
+                'url' => $request->url,
+                'status' => $request->status->value,
+                'comment' => $request->comment,
+                'votes_count' => $request->votes_count,
+                'submitted_by' => $request->user?->email,
+                'created_at' => $request->created_at?->toIso8601String(),
+            ])
+            ->all();
     }
 
     public function run(RunAdminCommandRequest $request): RedirectResponse

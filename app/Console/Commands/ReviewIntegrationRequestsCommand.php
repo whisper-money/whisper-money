@@ -101,17 +101,14 @@ class ReviewIntegrationRequestsCommand extends Command
             return false;
         }
 
-        $request->update([
-            'status' => $status,
-            'comment' => $this->commentFor($status),
-        ]);
+        $request->review($status, $this->commentFor($status));
 
         return true;
     }
 
     private function commentFor(IntegrationRequestStatus $status): ?string
     {
-        if ($status === IntegrationRequestStatus::NotDoable) {
+        if ($status->requiresComment()) {
             $comment = $this->ask('Why is this integration not doable? (shown to users)');
 
             while (blank($comment)) {
@@ -121,11 +118,10 @@ class ReviewIntegrationRequestsCommand extends Command
             return $comment;
         }
 
-        if ($status === IntegrationRequestStatus::InProgress) {
+        if ($status->keepsComment()) {
             return $this->ask('Add a comment for this request (optional, shown to users)') ?: null;
         }
 
-        // Approving, rejecting, re-queuing or marking done drops any stale public comment.
         return null;
     }
 
