@@ -286,6 +286,9 @@ describe('step 1 of the review', () => {
         expect(
             screen.getByText('This is how we have estimated your month'),
         ).toBeInTheDocument();
+        expect(screen.getByText(/moves in December/)).not.toHaveTextContent(
+            ':month',
+        );
         expect(rowNames('income')).toEqual(['Salary', 'Other income']);
         expect(rowNames('expenses')).toEqual([
             'Housing',

@@ -68,7 +68,7 @@ export function ForecastReviewEstimatesStep({
             description={
                 estimates
                     ? __(
-                          'What each category usually moves in :month, from the median of your last 3 months or your budget. Change any figure and it is saved at once, from :month on.',
+                          'What each category usually moves in :month, from the median of your last 3 months or your budget. Change any figure and it is saved at once, from that month on.',
                           { month: monthLongName(estimates.month, locale) },
                       )
                     : __(

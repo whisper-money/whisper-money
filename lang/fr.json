@@ -3222,7 +3222,7 @@
     "Transfers between your accounts are not counted: they only move money between them.": "Les virements entre vos comptes ne sont pas comptés : ils ne font que déplacer de l’argent entre eux.",
     "We could not save it. Try again.": "Nous n’avons pas pu l’enregistrer. Réessayez.",
     "We estimate each month from what every category usually moves, so the money without a category can only go to \"Other spending\" or \"Other income\".": "Nous estimons chaque mois à partir de ce que chaque catégorie fait habituellement circuler : l’argent sans catégorie ne peut aller que dans « Autres dépenses » ou « Autres revenus ».",
-    "What each category usually moves in :month, from the median of your last 3 months or your budget. Change any figure and it is saved at once, from :month on.": "Ce que chaque catégorie fait habituellement circuler en :month, d’après la médiane de vos 3 derniers mois ou votre budget. Modifiez un montant et il est enregistré aussitôt, à partir de :month.",
+    "What each category usually moves in :month, from the median of your last 3 months or your budget. Change any figure and it is saved at once, from that month on.": "Ce que chaque catégorie fait habituellement circuler en :month, d’après la médiane de vos 3 derniers mois ou votre budget. Modifiez un montant et il est enregistré aussitôt, à partir de ce mois.",
     "What each category usually moves in a month, from the median of your last 3 months or your budget.": "Ce que chaque catégorie fait habituellement circuler en un mois, d’après la médiane de vos 3 derniers mois ou votre budget.",
     "Yearly payments found (1 new)": "Paiements annuels trouvés (1 nouveau)",
     "Yearly payments found (:count new)": "Paiements annuels trouvés (:count nouveaux)",

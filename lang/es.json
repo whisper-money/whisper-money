@@ -4372,7 +4372,7 @@
     "Transfers between your accounts are not counted: they only move money between them.": "Las transferencias entre tus cuentas no cuentan: solo mueven dinero entre ellas.",
     "We could not save it. Try again.": "No hemos podido guardarlo. Inténtalo de nuevo.",
     "We estimate each month from what every category usually moves, so the money without a category can only go to \"Other spending\" or \"Other income\".": "Estimamos cada mes a partir de lo que suele mover cada categoría, así que el dinero sin categoría solo puede ir a «Otros gastos» u «Otros ingresos».",
-    "What each category usually moves in :month, from the median of your last 3 months or your budget. Change any figure and it is saved at once, from :month on.": "Lo que suele mover cada categoría en :month, según la mediana de tus últimos 3 meses o tu presupuesto. Cambia cualquier cifra y se guardará al momento, desde :month.",
+    "What each category usually moves in :month, from the median of your last 3 months or your budget. Change any figure and it is saved at once, from that month on.": "Lo que suele mover cada categoría en :month, según la mediana de tus últimos 3 meses o tu presupuesto. Cambia cualquier cifra y se guardará al momento, desde ese mes.",
     "What each category usually moves in a month, from the median of your last 3 months or your budget.": "Lo que suele mover cada categoría en un mes, según la mediana de tus últimos 3 meses o tu presupuesto.",
     "Yearly payments found (1 new)": "Pagos anuales encontrados (1 nuevo)",
     "Yearly payments found (:count new)": "Pagos anuales encontrados (:count nuevos)",
