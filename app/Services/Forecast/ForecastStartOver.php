@@ -12,6 +12,7 @@ use App\Models\ForecastItem;
 use App\Models\ForecastItemOverride;
 use App\Models\ForecastItemVersion;
 use App\Models\ForecastMatch;
+use App\Models\ForecastReviewCompletion;
 use App\Models\ForecastSnapshot;
 use App\Models\Transaction;
 use App\Models\User;
@@ -48,7 +49,7 @@ class ForecastStartOver
                 ->whereIn('account_id', Account::withTrashed()->select('id')->where('user_id', $user->id)->where('space_id', $spaceId))
                 ->delete();
 
-            foreach ([ForecastEstimateAdjustment::class, ForecastDismissal::class, ForecastSnapshot::class] as $model) {
+            foreach ([ForecastEstimateAdjustment::class, ForecastDismissal::class, ForecastSnapshot::class, ForecastReviewCompletion::class] as $model) {
                 $model::query()->where('user_id', $user->id)->forSpace($spaceId)->delete();
             }
         });

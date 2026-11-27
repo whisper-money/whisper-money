@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Forecast\ShowForecastRequest;
 use App\Models\ForecastItem;
+use App\Models\ForecastReviewCompletion;
 use App\Services\Forecast\ForecastPresenter;
 use App\Services\Forecast\ForecastReviewPresenter;
 use App\Services\Forecast\ForecastSuggestionCount;
@@ -16,11 +17,13 @@ use Inertia\Response;
  * together, behind the Forecast flag. Users without Pro reach it too, and
  * see the next month only.
  *
- * `reviewPrompt` says whether the user has any line yet, which opens the
- * review on its own the first time. How many suggestions wait for an answer
+ * `reviewPrompt` says whether the user has any line yet and whether they
+ * answered the review in this space: with neither, the review opens on its
+ * own. How many suggestions wait for an answer
  * (`newSuggestionCount`) comes right after the page, since working it out
  * when it is not cached reads 18 months of history; the review itself
- * (`review`) is only sent when the page asks for it. The "What you pay
+ * (`review`), of the account shown or of every account in the "All
+ * accounts" view, is only sent when the page asks for it. The "What you pay
  * every month" card (`recurringCharges`) runs the recurring detector live,
  * so it comes after the page too, on its own.
  */
@@ -31,14 +34,18 @@ class ForecastController extends Controller
         $user = $request->user();
         $spaceId = $user->activeSpace()->id;
 
+        $page = $presenter->present($user, $spaceId, $request->account(), $request->horizon());
+        $reviewedAccountId = $page['forecast']['account']['id'] ?? null;
+
         return Inertia::render('forecast/index', [
-            ...$presenter->present($user, $spaceId, $request->account(), $request->horizon()),
+            ...$page,
             'reviewPrompt' => [
                 'hasLines' => ForecastItem::query()->where('user_id', $user->id)->forSpace($spaceId)->notArchived()->exists(),
+                'reviewed' => ForecastReviewCompletion::query()->where('user_id', $user->id)->forSpace($spaceId)->exists(),
             ],
             'newSuggestionCount' => Inertia::defer(fn (): int => $count->for($user, $spaceId)),
             'recurringCharges' => Inertia::defer(fn (): array => $recurring->present($user, $spaceId), 'recurring-charges'),
-            'review' => Inertia::optional(fn (): array => $review->present($user, $spaceId)),
+            'review' => Inertia::optional(fn (): array => $review->present($user, $spaceId, $reviewedAccountId)),
         ]);
     }
 }

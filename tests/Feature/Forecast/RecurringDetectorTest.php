@@ -8,21 +8,31 @@ use App\Enums\ForecastSuggestionKind;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\ForecastAccountSetting;
-use App\Models\ForecastDismissal;
-use App\Models\ForecastItem;
 use App\Models\Space;
 use App\Models\User;
 use App\Services\Forecast\Data\ForecastCandidate;
-use App\Services\Forecast\ForecastSuggestions;
+use App\Services\Forecast\DescriptionFingerprint;
+use App\Services\Forecast\ForecastAccounts;
+use App\Services\Forecast\ForecastCalendar;
+use App\Services\Forecast\ForecastHistory;
+use App\Services\Forecast\RecurringDetector;
+use App\Services\Forecast\TransferPairer;
 
 const DETECTION_TODAY = '2026-11-26';
 
 /**
+ * What the detector finds in the last 18 months of the accounts the
+ * forecast includes.
+ *
  * @return list<ForecastCandidate>
  */
 function recurringCandidates(User $user): array
 {
-    return app(ForecastSuggestions::class)->for($user, $user->current_space_id, DETECTION_TODAY)['recurring'];
+    $spaceId = $user->current_space_id;
+    $accountIds = app(ForecastAccounts::class)->included($user, $spaceId)->modelKeys();
+    $transactions = app(ForecastHistory::class)->transactions($user, $spaceId, ForecastCalendar::monthStart(DETECTION_TODAY, -18), DETECTION_TODAY, $accountIds);
+
+    return app(RecurringDetector::class)->detect(app(DescriptionFingerprint::class)->groups($transactions), app(TransferPairer::class)->pair($transactions), DETECTION_TODAY);
 }
 
 function candidateNamed(User $user, string $fingerprint): ?ForecastCandidate
@@ -155,17 +165,6 @@ it('flags a transfer whose other side is not in the app', function () {
         ->destinationUnknown->toBeTrue();
 });
 
-it('does not propose again what the user dismissed or already plans', function () {
-    forecastMonthlyCharges($this->account, '2026-03-08', 9, -1299, 'NETFLIX.COM');
-    forecastMonthlyCharges($this->account, '2026-03-14', 9, -4999, 'GIMNASIO FIT');
-    expect(recurringCandidates($this->user))->toHaveCount(2);
-
-    ForecastDismissal::factory()->create(['user_id' => $this->user->id, 'fingerprint' => 'netflix com', 'kind' => ForecastSuggestionKind::Recurring]);
-    ForecastItem::factory()->create(['user_id' => $this->user->id, 'account_id' => $this->account->id, 'fingerprint' => 'gimnasio fit']);
-
-    expect(recurringCandidates($this->user))->toBe([]);
-});
-
 it('reads only the user\'s own transactions in the space', function () {
     $partner = User::factory()->create();
     $partnerAccount = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $partner->id, 'space_id' => $this->user->current_space_id, 'currency_code' => 'EUR']);
@@ -174,15 +173,6 @@ it('reads only the user\'s own transactions in the space', function () {
     $otherSpace = Space::factory()->create();
     $elsewhere = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'space_id' => $otherSpace->id, 'currency_code' => 'EUR']);
     forecastMonthlyCharges($elsewhere, '2026-03-08', 9, -1299, 'HBO MAX');
-
-    expect(recurringCandidates($this->user))->toBe([]);
-});
-
-it('does not propose again a line recognised by amount and day once it is planned', function () {
-    forecastMonthlyCharges($this->account, '2026-04-01', 8, -80000, fn (int $index): string => (string) (88412 + $index));
-    $identity = recurringCandidates($this->user)[0]->identity();
-
-    ForecastItem::factory()->create(['user_id' => $this->user->id, 'account_id' => $this->account->id, 'fingerprint' => $identity]);
 
     expect(recurringCandidates($this->user))->toBe([]);
 });

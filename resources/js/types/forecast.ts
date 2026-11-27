@@ -216,42 +216,20 @@ export interface ForecastData extends ForecastBase {
     plan: ForecastPlan;
 }
 
-export type ForecastSuggestionFrequency =
-    | 'monthly'
-    | 'bimonthly'
-    | 'quarterly'
-    | 'yearly'
-    | 'once';
-
 /**
- * A line the history suggests, as App\Services\Forecast\ForecastReviewPresenter
- * sends it. `amount` is signed from the account, in its minor units; `key`
- * is what the review sends back to keep or dismiss it.
+ * A yearly payment the history suggests, as
+ * App\Services\Forecast\ForecastReviewPresenter sends it. `amount` is
+ * signed from the account, in its minor units; `key` is what the review
+ * sends back to add or dismiss it.
  */
-export interface ForecastSuggestion {
+export interface ForecastAnnualSuggestion {
     key: string;
-    kind: 'recurring' | 'transfer' | 'annual';
-    /** Recognised by its description, so it can be merged with another. */
-    mergeable: boolean;
     name: string;
     accountId: string;
     accountName: string | null;
-    destinationAccountId: string | null;
-    destinationAccountName: string | null;
-    /** A transfer whose other side is not in the app. */
-    destinationUnknown: boolean;
     currencyCode: string;
-    frequency: ForecastSuggestionFrequency;
-    anchorDay: number;
     nextDate: string;
     amount: number;
-    amountTolerance: number;
-    confidence: 'high' | 'review';
-    chargeCount: number;
-    expectedCount: number;
-}
-
-export interface ForecastAnnualSuggestion extends ForecastSuggestion {
     /** The charges it stands on, oldest first. */
     evidence: { date: string; amount: number }[];
 }
@@ -262,24 +240,78 @@ export interface ForecastReviewAccount {
     currencyCode: string;
 }
 
-/** How the day-to-day spend is estimated, in the user's currency. */
-export interface ForecastDailySpend {
+/**
+ * One row of the review's first step: what a parent category (null for
+ * "Other income" / "Other spending") is expected to move on one account
+ * next month, positive, in the account's currency.
+ */
+export interface ForecastReviewEstimate {
+    accountId: string;
+    accountName: string | null;
     currencyCode: string;
-    budgets: { name: string; amount: number }[];
-    median: { name: string; amount: number } | null;
+    categoryId: string | null;
+    name: string | null;
+    kind: 'income' | 'expense';
+    amount: number;
+    basis: 'median' | 'budget' | 'adjustment';
+    budgetAmount: number | null;
+}
+
+/** A usual transfer between two of the user's accounts next month, positive. */
+export interface ForecastReviewTransfer {
+    key: string;
+    fromAccountName: string;
+    toAccountName: string;
+    amount: number;
+    currencyCode: string;
+}
+
+/** How next month is estimated; the totals are in the user's currency. */
+export interface ForecastReviewEstimates {
+    /** `Y-m`. */
+    month: string;
+    currencyCode: string;
+    income: ForecastReviewEstimate[];
+    expenses: ForecastReviewEstimate[];
+    transfers: ForecastReviewTransfer[];
+    totals: { income: number; expenses: number; net: number };
+    /** Currencies without a rate today, left out of the totals. */
+    unconvertedCurrencies: string[];
+    /** Budgets the forecast cannot stand on: their categories use the median. */
     unusableBudgets: string[];
 }
 
+/**
+ * Too much money without a category over the last three complete months
+ * (`from`–`to`, `Y-m-d`): how many transactions, and how much a month in
+ * the user's currency.
+ */
+export interface ForecastReviewUncategorized {
+    count: number;
+    monthlyAmount: number;
+    currencyCode: string;
+    from: string;
+    to: string;
+    /** The accounts counted, so the list shows only theirs. */
+    accountIds: string[];
+}
+
 export interface ForecastReview {
-    recurring: ForecastSuggestion[];
+    /** The account reviewed; null for every included account. */
+    accountId: string | null;
+    /** Null while 20 % or less of the money has no category. */
+    uncategorized: ForecastReviewUncategorized | null;
+    /** Null without an account to estimate. */
+    estimates: ForecastReviewEstimates | null;
     annual: ForecastAnnualSuggestion[];
     accounts: ForecastReviewAccount[];
-    dailySpend: ForecastDailySpend | null;
 }
 
 export interface ForecastReviewPrompt {
-    /** Whether the space has any forecast line: without one the review opens on its own. */
+    /** Whether the space has any forecast line. */
     hasLines: boolean;
+    /** Whether the user answered the review in this space. With neither, the review opens on its own. */
+    reviewed: boolean;
 }
 
 /*

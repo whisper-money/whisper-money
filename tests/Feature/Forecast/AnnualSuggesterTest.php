@@ -15,7 +15,7 @@ use App\Services\Forecast\ForecastSuggestions;
  */
 function annualCandidates(User $user): array
 {
-    return app(ForecastSuggestions::class)->for($user, $user->current_space_id, '2026-11-26')['annual'];
+    return app(ForecastSuggestions::class)->for($user, $user->current_space_id, '2026-11-26');
 }
 
 beforeEach(function () {

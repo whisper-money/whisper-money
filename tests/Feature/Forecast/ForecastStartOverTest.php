@@ -180,11 +180,11 @@ it('keeps a bell row that also names an alert of another space', function () {
 });
 
 it('forgets the count of suggestions waiting for an answer', function () {
-    Cache::put("forecast:new-suggestions:{$this->user->id}:{$this->spaceId}", 0, now()->addDay());
+    Cache::put("forecast:new-yearly-suggestions:{$this->user->id}:{$this->spaceId}", 0, now()->addDay());
 
     $this->actingAs($this->user)->post(route('forecast.start-over'))->assertRedirect();
 
-    expect(Cache::has("forecast:new-suggestions:{$this->user->id}:{$this->spaceId}"))->toBeFalse();
+    expect(Cache::has("forecast:new-yearly-suggestions:{$this->user->id}:{$this->spaceId}"))->toBeFalse();
 });
 
 it('opens the review again, as for a new user', function () {
