@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
  */
 readonly class PeriodSelection
 {
-    public const TYPES = ['month', 'quarter', 'year'];
+    private const TYPES = ['month', 'quarter', 'year'];
 
     public function __construct(
         public string $type,
