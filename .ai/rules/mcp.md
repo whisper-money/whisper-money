@@ -13,6 +13,8 @@ Registering a class in `WhisperMoneyServer::$tools` is the easy half. Four surfa
 3. `chatgpt-app-submission.json` — every served tool needs a `tools.<name>` entry with `annotations` plus all three justifications. `app_info.description` also enumerates what the app can do.
 4. The `#[Instructions]` block on `WhisperMoneyServer` — the server-level doc the agent actually reads.
 
+A tool still behind a feature flag (its `shouldRegister()` checks it) is listed in `WhisperMoneyServer::FLAGGED_TOOLS`: it gets its `ToolAnnotationsTest` entry and its `#[Instructions]` text, but `LandingToolCountTest` leaves it out of the public counts and `chatgpt-app-submission.json` has no entry for it until the flag reaches everyone. On GA, drop it from `FLAGGED_TOOLS`, bump the counts and add its submission entry.
+
 `ToolAnnotationsTest` also caps every tool `#[Description]` at 200 characters (the ChatGPT submission form's limit). Detail that does not fit belongs in a schema field description or the instructions.
 
 ## MCP strings stay English, including in comments

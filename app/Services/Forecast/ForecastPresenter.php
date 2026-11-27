@@ -113,6 +113,81 @@ class ForecastPresenter
     }
 
     /**
+     * The forecast for readers without the page (the MCP get_forecast tool):
+     * each included account, or the one asked for, over the months the user
+     * sees, in its own currency, with each month's problem (`strong`, `soft`
+     * or `ok`) and, for each problem month, the charges behind it. Without
+     * an account, also the "All accounts" view's total in the user's
+     * currency and its warning. Without Pro the months stop at the next one,
+     * exactly as on the page; how many of the months after it hold a problem
+     * is all that is said about them.
+     *
+     * @return array{today: string, horizon: int, isPro: bool, accounts: list<array<string, mixed>>, all: array<string, mixed>|null}|null Null when the account is not one the forecast includes.
+     */
+    public function overview(User $user, string $spaceId, ?string $accountId, int $horizon): ?array
+    {
+        $today = $user->localToday()->toDateString();
+        $isPro = $user->hasProPlan();
+        $included = $this->accounts->included($user, $spaceId);
+        $base = ['today' => $today, 'horizon' => $horizon, 'isPro' => $isPro];
+        $shown = $accountId === null ? $included : $included->where('id', $accountId)->values();
+
+        if ($shown->isEmpty()) {
+            return $accountId === null ? [...$base, 'accounts' => [], 'all' => null] : null;
+        }
+
+        $context = $this->context($user, $spaceId, $today, $included, $horizon, $isPro);
+
+        return [
+            ...$base,
+            'accounts' => $shown->map(fn (Account $account): array => $this->accountOverview($context, $account))->all(),
+            'all' => $accountId === null ? $this->allAccountsOverview($context) : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function accountOverview(ForecastContext $context, Account $account): array
+    {
+        $months = $context->visibleMonths($account->id);
+        $threshold = $context->thresholds[$account->id];
+        $levels = collect($months)->mapWithKeys(fn (array $month): array => [(string) $month['month'] => $this->alerts->levelOf($month, $threshold)->value ?? 'ok']);
+
+        return [
+            'account' => $account,
+            'threshold' => $threshold,
+            'months' => $months,
+            ...$this->endAndLowest($months),
+            'levels' => $levels->all(),
+            'alert' => $context->alerts[$account->id],
+            'causes' => $levels->reject(fn (string $level): bool => $level === 'ok')->map(fn (string $level, string $month): array => $this->causes($context->plan, $account->id, $month))->all(),
+            'lockedAlertCount' => $context->user->hasProPlan() ? null : $this->alerts->strongCount($context->lockedMonths($account->id), $threshold),
+        ];
+    }
+
+    /**
+     * What the "All accounts" view shows besides each account: the total
+     * projected in the user's currency and its warning.
+     *
+     * @return array<string, mixed>
+     */
+    private function allAccountsOverview(ForecastContext $context): array
+    {
+        $all = $this->allAccounts->present($context);
+
+        return [
+            'currencyCode' => $context->user->currency_code,
+            'months' => $all['projection'],
+            ...$this->endAndLowest($all['projection']),
+            'balanceToday' => $all['kpis']['balanceToday'],
+            'unconvertedCurrencies' => $all['unconvertedCurrencies'],
+            'alert' => $all['alert'],
+            'lockedAlertCount' => $all['lockedAlertCount'],
+        ];
+    }
+
+    /**
      * Every included account projected once in its own currency, with its
      * warnings over the months shown: the month in progress and the horizon,
      * or without Pro only the next month.
@@ -204,16 +279,30 @@ class ForecastPresenter
      */
     private function kpis(array $months, int $balanceToday): array
     {
-        $last = end($months);
-        $lowest = collect($months)->sortBy('min')->first();
         $expenses = array_sum(array_column($months, 'expenses'));
         $estimated = array_sum(array_column($months, 'estimated'));
 
         return [
             'balanceToday' => $balanceToday,
+            ...$this->endAndLowest($months),
+            'concreteShare' => $expenses > 0 ? (int) round(100 * ($expenses - $estimated) / $expenses) : null,
+        ];
+    }
+
+    /**
+     * The last month's close and its range, and the lowest point.
+     *
+     * @param  list<array<string, int|string|null>>  $months
+     * @return array{end: array{month: int|string|null, close: int|string|null, band: int|string|null}, lowest: array{month: int|string|null, min: int|string|null, minDate: int|string|null}}
+     */
+    private function endAndLowest(array $months): array
+    {
+        $last = end($months);
+        $lowest = collect($months)->sortBy('min')->first();
+
+        return [
             'end' => ['month' => $last['month'], 'close' => $last['close'], 'band' => $last['band']],
             'lowest' => ['month' => $lowest['month'], 'min' => $lowest['min'], 'minDate' => $lowest['minDate']],
-            'concreteShare' => $expenses > 0 ? (int) round(100 * ($expenses - $estimated) / $expenses) : null,
         ];
     }
 

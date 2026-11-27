@@ -14,6 +14,10 @@ it('claims on the landing page the number of tools the server exposes', function
     /** @var array<int, class-string<Tool>> $tools */
     $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];
 
+    // A tool still behind a feature flag is not public, so the landing page
+    // does not count it yet.
+    $tools = array_diff($tools, WhisperMoneyServer::FLAGGED_TOOLS);
+
     $writes = array_filter($tools, fn (string $tool): bool => is_subclass_of($tool, WriteTool::class));
 
     $source = file_get_contents(dirname(__DIR__, 3).'/resources/js/pages/welcome.tsx');

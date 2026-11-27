@@ -16,6 +16,7 @@ $readOnly = [
     'get_monthly_savings',
     'get_cashflow',
     'get_net_worth',
+    'get_forecast',
     'list_accounts',
     'list_categories',
     'list_labels',
