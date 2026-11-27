@@ -264,6 +264,11 @@ interface ChartTooltipContentProps {
      * default, so every other chart keeps listing them.
      */
     hideZeroValues?: boolean;
+    /**
+     * Drops the total row, for a chart whose series are not amounts that add
+     * up (counts on different scales, say).
+     */
+    hideTotal?: boolean;
 }
 
 /**
@@ -309,6 +314,7 @@ const ChartTooltipContent = React.forwardRef<
             displayCurrency,
             netWorthMode,
             hideZeroValues,
+            hideTotal = false,
             coordinate,
         },
         ref,
@@ -536,7 +542,8 @@ const ChartTooltipContent = React.forwardRef<
                         const liabilities: Array<{ name: string; amount: number }> = liabilitiesJson
                             ? (JSON.parse(liabilitiesJson) as Array<{ name: string; amount: number }>)
                             : [];
-                        const showTotalSection = itemPayload.length > 1 || hasLiabilities;
+                        const showTotalSection =
+                            !hideTotal && (itemPayload.length > 1 || hasLiabilities);
 
                         if (!showTotalSection) return null;
 

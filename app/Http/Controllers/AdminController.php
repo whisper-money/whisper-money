@@ -6,6 +6,8 @@ use App\Enums\IntegrationRequestStatus;
 use App\Http\Requests\RunAdminCommandRequest;
 use App\Models\IntegrationRequest;
 use App\Models\User;
+use App\Services\Admin\SignupChart;
+use App\Support\Admin\AdminUserRow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
@@ -68,7 +70,10 @@ class AdminController extends Controller
      */
     private const RUN_TIMEOUT_SECONDS = 60;
 
-    private const USERS_PER_PAGE = 25;
+    /**
+     * The newest sign-ups the page lists; the rest are on /admin/users.
+     */
+    private const LATEST_USERS = 10;
 
     /**
      * Every allowed command line, mapped to whether it takes arguments.
@@ -80,22 +85,18 @@ class AdminController extends Controller
         return array_merge(...array_values(self::COMMANDS));
     }
 
-    public function index(): Response
+    public function index(SignupChart $signupChart): Response
     {
         return Inertia::render('admin/index', [
             'commands' => self::COMMANDS,
-            'users' => User::query()
+            'signupChart' => $signupChart->points(),
+            'latestUsers' => User::query()
                 ->latest()
-                ->paginate(self::USERS_PER_PAGE)
-                ->through(fn (User $user): array => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'locale' => $user->locale,
-                    'currency_code' => $user->currency_code,
-                    'created_at' => $user->created_at?->toIso8601String(),
-                    'last_active_at' => $user->last_active_at?->toIso8601String(),
-                ]),
+                ->limit(self::LATEST_USERS)
+                ->get()
+                ->map(AdminUserRow::from(...))
+                ->all(),
+            'userCount' => User::query()->count(),
             'integrationRequests' => $this->integrationRequests(),
             'result' => session('commandResult'),
         ]);

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Models\UserActiveDay;
 use App\Services\Achievements\Awarder;
 use Carbon\CarbonInterface;
 use Closure;
@@ -44,11 +45,14 @@ class TrackLastActiveAt
     private function track(User $user): void
     {
         $lastActiveAt = $user->last_active_at;
+        $newUtcDay = $this->isNewUtcDay($lastActiveAt);
 
         // A new day is always written, however recent the last write: the day
         // is what a visit streak counts, and someone who comes back a minute
-        // after midnight has started a new one.
+        // after midnight has started a new one. A new UTC day is too, so the
+        // activity log never misses one that starts inside the reader's day.
         if ($lastActiveAt !== null
+            && ! $newUtcDay
             && $this->sameSpan($user, $lastActiveAt, now(), 'day')
             && $lastActiveAt->gt(now()->subSeconds(self::THROTTLE_SECONDS))) {
             return;
@@ -61,9 +65,25 @@ class TrackLastActiveAt
         $user->last_active_at = now();
         $user->saveQuietly();
 
+        // The admin chart's activity log: one row the first time a UTC day is
+        // seen, nothing on the throttled writes after it.
+        if ($newUtcDay) {
+            UserActiveDay::record($user);
+        }
+
         if ($this->runs($user) !== $before) {
             $this->award($user);
         }
+    }
+
+    /**
+     * Whether `$lastActiveAt` falls on an earlier UTC day than now, whatever
+     * the app's timezone: the activity log is kept in UTC days.
+     */
+    private function isNewUtcDay(?CarbonInterface $lastActiveAt): bool
+    {
+        return $lastActiveAt === null
+            || $lastActiveAt->copy()->utc()->toDateString() !== now('UTC')->toDateString();
     }
 
     /**

@@ -279,7 +279,13 @@ test('the offer carries the uncategorized backlog, latest first', function () {
 
 test('the backlog is not read for a user the offer is not shown to', function () {
     $user = freeUserPastThePaywall();
-    giveTransactionCreatedAt($user, now()->subDay())->update(['category_id' => null]);
+    // Dated in an earlier month: one in this month makes the header's
+    // uncategorized prompt ask the setup checklist, whose own unbounded count
+    // would match the backlog's shape below and fail the test at random.
+    giveTransactionCreatedAt($user, now()->subDay())->update([
+        'category_id' => null,
+        'transaction_date' => now()->startOfMonth()->subMonth(),
+    ]);
     $user->markSecondOfferShown();
 
     DB::enableQueryLog();

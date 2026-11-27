@@ -2,6 +2,7 @@
 
 use App\Models\Achievement;
 use App\Models\User;
+use App\Models\UserActiveDay;
 use App\Notifications\AchievementUnlocked;
 use Illuminate\Support\Facades\Notification;
 
@@ -45,6 +46,43 @@ test('the last active date is refreshed once the throttle window passes', functi
     $this->actingAs($user)->get(route('dashboard'))->assertOk();
 
     expect($user->fresh()->last_active_at->timestamp)->toBeGreaterThan($stale->timestamp);
+});
+
+test('the first request of a UTC day logs that day once', function () {
+    $user = User::factory()->onboarded()->create(['last_active_at' => now()->subDay()]);
+
+    $this->actingAs($user)->get(route('dashboard'))->assertOk();
+    // Past the throttle, so the middleware writes again on the same day.
+    $this->travel(10)->minutes();
+    $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+    expect(UserActiveDay::query()->where('user_id', $user->id)->pluck('date')->map->toDateString()->all())
+        ->toBe(['2026-09-16']);
+});
+
+test('a new UTC day is logged even inside the throttle and the reader\'s own day', function () {
+    $this->travelTo('2026-09-21 00:01:00');   // 02:01 on the 21st in Madrid
+
+    $user = User::factory()->onboarded()->create([
+        'timezone' => 'Europe/Madrid',
+        'last_active_at' => '2026-09-20 23:59:00',   // 01:59 on the 21st in Madrid
+        'visit_streak' => 1,
+        'longest_visit_streak' => 1,
+    ]);
+
+    $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+    expect(UserActiveDay::query()->where('user_id', $user->id)->pluck('date')->map->toDateString()->all())
+        ->toBe(['2026-09-21'])
+        ->and($user->fresh()->visit_streak)->toBe(1);
+});
+
+test('a later write on a day already logged adds nothing', function () {
+    $user = User::factory()->onboarded()->create(['last_active_at' => now()->subHour()]);
+
+    $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+    expect(UserActiveDay::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
 /*
