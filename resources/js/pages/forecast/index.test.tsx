@@ -1071,6 +1071,20 @@ describe('the "All accounts" view', () => {
         ).toBeNull();
     });
 
+    it('links the new suggestions to the review over the plan', () => {
+        renderPage(all(), null, { hasLines: true }, 2);
+
+        const link = document.querySelector(
+            '[data-test="forecast-review-link"]',
+        )!;
+        expect(link).toHaveTextContent('Recurring detected (2 new)');
+
+        fireEvent.click(link);
+        expect(
+            document.querySelector('[data-test="forecast-review"]'),
+        ).not.toBeNull();
+    });
+
     it('shows the four figures of the total', () => {
         renderPage(all());
 
