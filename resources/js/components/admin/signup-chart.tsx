@@ -63,6 +63,8 @@ export type SignupChartData = {
         previous_active_users: number;
         /** The previous figures stop at the same day of their period. */
         in_progress: boolean;
+        /** The day the active users are counted up to; null before the period. */
+        as_of: string | null;
     };
 };
 
@@ -84,6 +86,19 @@ function chartConfig(): ChartConfig {
             color: 'var(--color-chart-3)',
         },
     };
+}
+
+/**
+ * The points with the previous side's figures flattened next to the current
+ * ones: the legend and the CSS color variables key each series by its
+ * `dataKey`, which has to be a plain config key.
+ */
+function chartRows(points: SignupChartPoint[]) {
+    return points.map((point) => ({
+        ...point,
+        previous_signups: point.previous?.signups ?? null,
+        previous_active_users: point.previous?.active_users ?? null,
+    }));
 }
 
 /** A percentage change, or null when there is nothing to compare with. */
@@ -242,9 +257,6 @@ function SignupSummary({
 }) {
     const label = useBucketLabel(chart.bucket);
     const { summary } = chart;
-    const lastDrawn = chart.points
-        .filter((point) => point.signups !== null)
-        .at(-1);
     const tiles = [
         {
             key: 'signups',
@@ -258,9 +270,9 @@ function SignupSummary({
             label: __('Active users'),
             value: summary.active_users,
             previous: summary.previous_active_users,
-            description: lastDrawn
+            description: summary.as_of
                 ? __('In the 30 days up to :date', {
-                      date: label.day(lastDrawn.end, 'MMM d, yyyy'),
+                      date: label.day(summary.as_of, 'MMM d, yyyy'),
                   })
                 : null,
         },
@@ -353,7 +365,7 @@ export function SignupChart({ chart }: { chart: SignupChartData }) {
                         config={chartConfig()}
                         className="aspect-auto h-64 w-full"
                     >
-                        <ComposedChart data={chart.points}>
+                        <ComposedChart data={chartRows(chart.points)}>
                             <XAxis
                                 dataKey="start"
                                 tickLine={false}
@@ -389,7 +401,7 @@ export function SignupChart({ chart }: { chart: SignupChartData }) {
                             {compare && (
                                 <Bar
                                     yAxisId="signups"
-                                    dataKey="previous.signups"
+                                    dataKey="previous_signups"
                                     fill="var(--color-previous_signups)"
                                     radius={[3, 3, 0, 0]}
                                 />
@@ -404,7 +416,7 @@ export function SignupChart({ chart }: { chart: SignupChartData }) {
                                 <Line
                                     yAxisId="active_users"
                                     type="monotone"
-                                    dataKey="previous.active_users"
+                                    dataKey="previous_active_users"
                                     stroke="var(--color-previous_active_users)"
                                     strokeWidth={2}
                                     strokeDasharray="4 4"

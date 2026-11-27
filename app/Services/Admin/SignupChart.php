@@ -27,7 +27,7 @@ class SignupChart
      * figures, so the axis spans the whole period. Each carries the bucket at
      * the same index of the previous period, null past that period's end.
      *
-     * @return array{period_type: string, period: string, previous_period: string, bucket: 'day'|'week', points: list<array{start: string, end: string, signups: int|null, active_users: int|null, previous: Side|null}>, summary: array{signups: int, active_users: int, previous_signups: int, previous_active_users: int, in_progress: bool}}
+     * @return array{period_type: string, period: string, previous_period: string, bucket: 'day'|'week', points: list<array{start: string, end: string, signups: int|null, active_users: int|null, previous: Side|null}>, summary: array{signups: int, active_users: int, previous_signups: int, previous_active_users: int, in_progress: bool, as_of: string|null}}
      */
     public function for(PeriodSelection $selection): array
     {
@@ -63,6 +63,7 @@ class SignupChart
                 'previous_signups' => $figures['previous_total']['signups'] ?? 0,
                 'previous_active_users' => $figures['previous_total']['active_users'] ?? 0,
                 'in_progress' => $inProgress,
+                'as_of' => $start->lte($today) ? $end->min($today)->toDateString() : null,
             ],
         ];
     }

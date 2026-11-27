@@ -38,6 +38,7 @@ function chart(overrides: Partial<SignupChartData> = {}): SignupChartData {
             previous_signups: 4,
             previous_active_users: 50,
             in_progress: false,
+            as_of: '2026-03-31',
         },
         ...overrides,
     };
@@ -60,6 +61,9 @@ describe('SignupChart', () => {
         expect(screen.getByText('+50.0%')).toBeTruthy();
         expect(screen.getByText('-20.0%')).toBeTruthy();
         expect(screen.getAllByText('vs last period')).toHaveLength(2);
+        expect(
+            screen.getByText('In the 30 days up to Mar 31, 2026'),
+        ).toBeTruthy();
     });
 
     it('says so when the previous period is cut at the same point', () => {

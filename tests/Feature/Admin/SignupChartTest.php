@@ -164,6 +164,7 @@ test('an in-progress period is compared with the same stretch of the one before'
         'previous_signups' => 2,
         'previous_active_users' => 1,
         'in_progress' => true,
+        'as_of' => '2026-11-27',
     ]);
 });
 
@@ -175,6 +176,7 @@ test('a finished period is compared with the whole one before', function () {
         'signups' => 4,
         'previous_signups' => 5,
         'in_progress' => false,
+        'as_of' => '2026-10-31',
     ]);
 });
 
@@ -186,6 +188,8 @@ test('a year in progress is compared day for day, not by whole weeks', function 
     expect(signupChart('year', '2026')['summary'])->toMatchArray([
         'previous_signups' => 1,
         'in_progress' => true,
+        // Today, not the Sunday that ends this week's bucket.
+        'as_of' => '2026-11-27',
     ]);
 });
 
@@ -193,5 +197,5 @@ test('a period that has not started draws nothing and runs no activity query', f
     $chart = signupChart('month', '2027-02');
 
     expect(collect($chart['points'])->pluck('signups')->filter()->all())->toBe([])
-        ->and($chart['summary'])->toBe(['signups' => 0, 'active_users' => 0, 'previous_signups' => 0, 'previous_active_users' => 0, 'in_progress' => false]);
+        ->and($chart['summary'])->toBe(['signups' => 0, 'active_users' => 0, 'previous_signups' => 0, 'previous_active_users' => 0, 'in_progress' => false, 'as_of' => null]);
 });
