@@ -45,7 +45,7 @@ import {
 } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { MoreHorizontal } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 const OUTSIDE = 'outside';
 
@@ -261,6 +261,7 @@ function SuggestionRow({
                         <Input
                             autoFocus
                             defaultValue={draft.name}
+                            onFocus={(event) => event.currentTarget.select()}
                             aria-label={__('Name')}
                             className="h-8"
                             maxLength={255}
@@ -384,6 +385,11 @@ function RowMenu({
     onMerge: (sourceId: string) => void;
     onSeparate: () => void;
 }) {
+    // The name field opens once the menu has closed: while the menu is open
+    // its focus trap would steal the focus back, and closing it would hand
+    // the focus to its trigger instead of the field.
+    const renamePicked = useRef(false);
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -398,8 +404,21 @@ function RowMenu({
                     <MoreHorizontal className="size-4" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={onRename}>
+            <DropdownMenuContent
+                align="end"
+                onCloseAutoFocus={(event) => {
+                    if (renamePicked.current) {
+                        event.preventDefault();
+                        renamePicked.current = false;
+                        onRename();
+                    }
+                }}
+            >
+                <DropdownMenuItem
+                    onSelect={() => {
+                        renamePicked.current = true;
+                    }}
+                >
                     {__('Rename')}
                 </DropdownMenuItem>
                 {mergeTargets.length > 0 && (

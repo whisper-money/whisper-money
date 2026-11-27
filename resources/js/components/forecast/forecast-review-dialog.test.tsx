@@ -3,7 +3,13 @@ import {
     type ForecastReview,
     type ForecastSuggestion,
 } from '@/types/forecast';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForecastReviewDialog } from './forecast-review-dialog';
 
@@ -245,6 +251,22 @@ describe('step 1 of the review', () => {
         expect(
             screen.getByRole('button', { name: 'Rent' }),
         ).toBeInTheDocument();
+    });
+
+    it('focuses the name with all its text selected when Rename is picked', async () => {
+        renderDialog();
+
+        fireEvent.pointerDown(
+            screen.getByRole('button', { name: 'More options for ALQUILER' }),
+            { button: 0, ctrlKey: false },
+        );
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+
+        const input = await screen.findByRole('textbox', { name: 'Name' });
+
+        await waitFor(() => expect(document.activeElement).toBe(input));
+        expect(input).toHaveProperty('selectionStart', 0);
+        expect(input).toHaveProperty('selectionEnd', 'ALQUILER'.length);
     });
 
     it('closes without saving on "Not now"', () => {
