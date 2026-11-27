@@ -269,6 +269,17 @@ describe('step 1 of the review', () => {
         expect(input).toHaveProperty('selectionEnd', 'ALQUILER'.length);
     });
 
+    it('focuses the name with all its text selected when the name is clicked', () => {
+        renderDialog();
+
+        fireEvent.click(screen.getByRole('button', { name: 'ALQUILER' }));
+        const input = screen.getByRole('textbox', { name: 'Name' });
+
+        expect(document.activeElement).toBe(input);
+        expect(input).toHaveProperty('selectionStart', 0);
+        expect(input).toHaveProperty('selectionEnd', 'ALQUILER'.length);
+    });
+
     it('closes without saving on "Not now"', () => {
         const { onOpenChange } = renderDialog();
 

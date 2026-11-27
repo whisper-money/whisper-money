@@ -259,9 +259,8 @@ function SuggestionRow({
                 <div className="flex min-w-0 flex-col gap-0.5">
                     {renaming ? (
                         <Input
-                            autoFocus
+                            ref={focusWithTextSelected}
                             defaultValue={draft.name}
-                            onFocus={(event) => event.currentTarget.select()}
                             aria-label={__('Name')}
                             className="h-8"
                             maxLength={255}
@@ -370,6 +369,18 @@ function SuggestionRow({
             </div>
         </Card>
     );
+}
+
+/**
+ * Focuses the name field as it opens, with its whole text selected, so typing
+ * replaces the name. `setSelectionRange` rather than `select()`, which iOS
+ * Safari ignores.
+ */
+function focusWithTextSelected(input: HTMLInputElement | null): void {
+    if (input) {
+        input.focus();
+        input.setSelectionRange(0, input.value.length);
+    }
 }
 
 function RowMenu({
