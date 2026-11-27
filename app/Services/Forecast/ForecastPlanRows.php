@@ -29,9 +29,15 @@ class ForecastPlanRows
      */
     private const OTHER = 'other';
 
+    /**
+     * Payments of a line listed as "planned vs real" in its edit sheet.
+     */
+    private const RECENT_PAYMENTS = 3;
+
     public function __construct(
         private readonly OccurrenceExpander $expander,
         private readonly ForecastHistory $history,
+        private readonly ForecastDrift $drift,
     ) {}
 
     /**
@@ -48,12 +54,13 @@ class ForecastPlanRows
         $dates = $this->datesIn($occurrences, $months[0]);
         $matched = $this->matchedThisMonth($items, $account->id, $months[0]);
         $counterparts = $this->counterpartNames($user, $items, $account->id);
+        $editing = $this->editDetails($user, $items, $occurrences, ForecastCalendar::horizonEnd($months[0].'-01', count($months)));
         $parents = $this->history->parentCategories($user);
         $groups = ['income' => [], 'expenses' => []];
         $transfers = [];
 
         foreach ($items as $item) {
-            $row = $this->itemRow($item, $account->id, $amounts[$item->id] ?? [], $counterparts);
+            $row = [...$this->itemRow($item, $account->id, $amounts[$item->id] ?? [], $counterparts), ...$editing[$item->id]];
             $row['current'] = $this->currentCell($row['amounts'][$months[0]] ?? null, $matched[$item->id] ?? null, $dates[$item->id] ?? null);
 
             if ($item->destination_account_id !== null) {
@@ -91,6 +98,108 @@ class ForecastPlanRows
         $from = ForecastCalendar::monthStart($months[0].'-01');
 
         return $this->expander->expand($items->map(ExpandableItem::fromModel(...)), $from, ForecastCalendar::horizonEnd($from, count($months)));
+    }
+
+    /**
+     * What the edit sheet of each line needs: the line as the client engine
+     * expands it, the occurrence each month shown holds, how it is
+     * recognised, its last payments, and the update they suggest. Nothing
+     * past `$until` is sent: versions and overrides after it are left out.
+     *
+     * @param  Collection<int, ForecastItem>  $items
+     * @param  list<Occurrence>  $occurrences
+     * @return array<string, array<string, mixed>> By line id.
+     */
+    private function editDetails(User $user, Collection $items, array $occurrences, string $until): array
+    {
+        $occurrenceDates = [];
+
+        foreach ($occurrences as $occurrence) {
+            $occurrenceDates[$occurrence->itemId][ForecastCalendar::monthKey($occurrence->date)] ??= $occurrence->occurrenceDate;
+        }
+
+        $payments = $this->recentPayments($items);
+        $drifts = $this->drift->suggestions($items);
+        $details = [];
+
+        foreach ($items as $item) {
+            $drift = $drifts[$item->id] ?? null;
+            $driftFrom = $drift === null ? null : $this->drift->startsOn($user, $item, $drift);
+
+            $details[$item->id] = [
+                'accountId' => $item->account_id,
+                'categoryId' => $item->category_id,
+                'definition' => $this->definition($item, $until),
+                'occurrenceDates' => $occurrenceDates[$item->id] ?? [],
+                'matchText' => ForecastMatchRules::needle($item->match_rules_json),
+                'amountTolerance' => $item->amount_tolerance,
+                'dateWindowDays' => $item->date_window_days,
+                'payments' => $payments[$item->id] ?? [],
+                'drift' => $driftFrom === null || $driftFrom > $until ? null : ['amount' => $drift->amount, 'from' => $driftFrom],
+            ];
+        }
+
+        return $details;
+    }
+
+    /**
+     * The line in the shape resources/js/lib/forecast/expand-occurrences.ts
+     * takes, up to `$until`.
+     *
+     * @return array<string, mixed>
+     */
+    private function definition(ForecastItem $item, string $until): array
+    {
+        $line = ExpandableItem::fromModel($item);
+
+        return [
+            'id' => $line->id,
+            'accountId' => $line->accountId,
+            'destinationAccountId' => $line->destinationAccountId,
+            'frequency' => $line->frequency->value,
+            'anchorDate' => $line->anchorDate,
+            'endsOn' => $line->endsOn,
+            'versions' => array_values(array_map(
+                fn ($version): array => ['effectiveFrom' => $version->effectiveFrom, 'amount' => $version->amount],
+                array_filter($line->versions, fn ($version): bool => $version->effectiveFrom <= $until),
+            )),
+            'overrides' => array_values(array_map(
+                fn ($override): array => ['occurrenceDate' => $override->occurrenceDate, 'amount' => $override->amount, 'movedTo' => $override->movedTo, 'skipped' => $override->skipped],
+                array_filter($line->overrides, fn ($override): bool => $override->occurrenceDate <= $until && ($override->movedTo ?? $override->occurrenceDate) <= $until),
+            )),
+        ];
+    }
+
+    /**
+     * The latest payments of each line on its own account, newest first:
+     * what was planned and what was paid.
+     *
+     * @param  Collection<int, ForecastItem>  $items
+     * @return array<string, list<array{occurrenceDate: string, planned: int, real: int}>>
+     */
+    private function recentPayments(Collection $items): array
+    {
+        $byItem = [];
+        $matches = ForecastMatch::query()
+            ->whereIn('forecast_item_id', $items->modelKeys())
+            ->whereHas('transaction')
+            ->with('transaction:id,account_id,amount')
+            ->orderByDesc('occurrence_date')
+            ->get();
+        $accounts = $items->pluck('account_id', 'id');
+
+        foreach ($matches as $match) {
+            $isOwnLeg = $match->transaction->account_id === $accounts[$match->forecast_item_id];
+
+            if (! $isOwnLeg || count($byItem[$match->forecast_item_id] ?? []) >= self::RECENT_PAYMENTS) {
+                continue;
+            }
+
+            $real = $match->transaction->amount;
+            $byItem[$match->forecast_item_id][] = ['occurrenceDate' => $match->occurrence_date->toDateString(), 'planned' => $real - $match->deviation, 'real' => $real];
+        }
+
+        return $byItem;
     }
 
     /**

@@ -1,7 +1,14 @@
 import {
+    useForecastEditor,
+    type ForecastEditTarget,
+} from '@/components/forecast/forecast-editor';
+import {
+    EMPTY_CELL,
     EstimateHeader,
+    KindBadge,
     LineHeader,
     LockedCell,
+    PlanCell,
     PlanMonthCell,
     type PlanCellContext,
 } from '@/components/forecast/forecast-plan-cells';
@@ -14,7 +21,11 @@ import {
 } from '@/components/ui/card';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import { isShort, monthColumnLabel } from '@/lib/forecast/format';
+import {
+    isShort,
+    monthColumnLabel,
+    monthLongName,
+} from '@/lib/forecast/format';
 import {
     buildPlanRows,
     groupRowIds,
@@ -22,7 +33,11 @@ import {
     type PlanSection,
 } from '@/lib/forecast/plan-rows';
 import { cn } from '@/lib/utils';
-import { type ForecastData, type ForecastMonthColumn } from '@/types/forecast';
+import {
+    type ForecastData,
+    type ForecastMonthColumn,
+    type ForecastTransferSuggestion,
+} from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import {
     getCoreRowModel,
@@ -33,7 +48,7 @@ import {
     type Row,
 } from '@tanstack/react-table';
 import { ChevronRightIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 
 interface ForecastPlanTableProps {
     forecast: ForecastData;
@@ -152,7 +167,9 @@ function RowHeader({
                 </button>
             );
         case 'line':
-            return <LineHeader line={data.line} />;
+            return <LineHeader line={data.line} currencyCode={currencyCode} />;
+        case 'suggestion':
+            return <SuggestionHeader suggestion={data.suggestion} />;
         case 'estimate':
             return (
                 <EstimateHeader
@@ -209,15 +226,7 @@ function FullWidthRow({ row, colSpan }: { row: PlanRow; colSpan: number }) {
         return (
             <tr>
                 <td colSpan={colSpan} className="px-4 pb-1.5 pl-10">
-                    {/* Becomes a link once lines can be added (T7). */}
-                    <span
-                        className="text-xs text-muted-foreground"
-                        data-test="forecast-add-line"
-                    >
-                        {__('+ Add something concrete in :group', {
-                            group: groupName(row.groupName),
-                        })}
-                    </span>
+                    <AddLineButton row={row} />
                 </td>
             </tr>
         );
@@ -225,6 +234,210 @@ function FullWidthRow({ row, colSpan }: { row: PlanRow; colSpan: number }) {
 
     return null;
 }
+
+function AddLineButton({ row }: { row: Extract<PlanRow, { type: 'add' }> }) {
+    const editor = useForecastEditor();
+    const label = __('+ Add something concrete in :group', {
+        group: groupName(row.group.name),
+    });
+
+    if (editor === null) {
+        return <span className="text-xs text-muted-foreground">{label}</span>;
+    }
+
+    return (
+        <button
+            type="button"
+            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            onClick={() =>
+                editor.open({
+                    kind: 'add',
+                    prefill: {
+                        type: row.section === 'income' ? 'income' : 'expense',
+                        categoryId: row.group.categoryId,
+                    },
+                })
+            }
+            data-test="forecast-add-line"
+        >
+            {label}
+        </button>
+    );
+}
+
+function useAccountName(accountId: string): string {
+    const forecast = useContext(ForecastTableContext);
+
+    return (
+        forecast?.accounts.find((account) => account.id === accountId)?.name ??
+        ''
+    );
+}
+
+function SuggestionHeader({
+    suggestion,
+}: {
+    suggestion: ForecastTransferSuggestion;
+}) {
+    const locale = useLocale();
+    const from = useAccountName(suggestion.fromAccountId);
+
+    return (
+        <span className="flex flex-col gap-1">
+            <span className="text-[13px]">← {from}</span>
+            <span className="flex flex-wrap items-center gap-1.5">
+                <KindBadge kind="transfer" />
+                <span className="text-[11px] text-muted-foreground">
+                    {__('Suggested for :month', {
+                        month: monthLongName(suggestion.month, locale),
+                    })}
+                </span>
+            </span>
+        </span>
+    );
+}
+
+/** The transfer the warning suggests, prefilled: what "+500?" and the warning's button open. */
+export function suggestedTransfer(
+    suggestion: ForecastTransferSuggestion,
+    accountId: string,
+): ForecastEditTarget {
+    return {
+        kind: 'add',
+        prefill: {
+            type: 'transfer',
+            accountId: suggestion.fromAccountId,
+            destinationAccountId: accountId,
+            amount: suggestion.amount,
+            date: suggestion.date,
+            frequency: 'once',
+        },
+    };
+}
+
+/** What a cell opens when it can be changed: closed, locked and paid months open nothing. */
+function editTarget(
+    row: PlanRow,
+    column: ForecastMonthColumn,
+    forecast: ForecastData,
+): ForecastEditTarget | null {
+    if (column.status === 'locked') {
+        return null;
+    }
+
+    const current = column.status === 'current';
+
+    switch (row.type) {
+        case 'line':
+            return row.line.occurrenceDates[column.month] &&
+                (!current || row.line.current.status === 'pending')
+                ? { kind: 'line', line: row.line, month: column.month }
+                : null;
+        case 'estimate':
+            return { kind: 'estimate', group: row.group, month: column.month };
+        case 'suggestion':
+            return row.suggestion.month === column.month
+                ? suggestedTransfer(row.suggestion, forecast.account.id)
+                : null;
+        default:
+            return null;
+    }
+}
+
+function rowLabel(row: PlanRow): string {
+    switch (row.type) {
+        case 'line':
+            return row.line.name;
+        case 'estimate':
+            return __('Estimated rest of :group', {
+                group: groupName(row.group.name),
+            });
+        default:
+            return __('Suggested transfer');
+    }
+}
+
+function SuggestionCell({
+    suggestion,
+    month,
+    currencyCode,
+}: {
+    suggestion: ForecastTransferSuggestion;
+    month: string;
+    currencyCode: string;
+}) {
+    const { formatAmountNumber } = useFormatAmount();
+
+    if (suggestion.month !== month) {
+        return EMPTY_CELL;
+    }
+
+    return (
+        <PlanCell className="border border-dashed border-warning bg-warning/10 text-warning">
+            +
+            {formatAmountNumber(suggestion.amount, currencyCode, {
+                fractionDigits: 0,
+            })}
+            ?
+        </PlanCell>
+    );
+}
+
+/** A month's cell, a button when the figure can be changed. */
+function MonthCell({
+    row,
+    column,
+    context,
+}: {
+    row: PlanRow;
+    column: ForecastMonthColumn;
+    context: PlanCellContext & { locale: string };
+}) {
+    const editor = useForecastEditor();
+    const forecast = useContext(ForecastTableContext);
+
+    if (column.status === 'locked') {
+        return <LockedCell />;
+    }
+
+    const content =
+        row.type === 'suggestion' ? (
+            <SuggestionCell
+                suggestion={row.suggestion}
+                month={column.month}
+                currencyCode={context.currencyCode}
+            />
+        ) : (
+            <PlanMonthCell
+                row={row}
+                month={column.month}
+                current={column.status === 'current'}
+                context={context}
+            />
+        );
+    const target =
+        editor === null || forecast === null
+            ? null
+            : editTarget(row, column, forecast);
+
+    if (target === null || editor === null) {
+        return content;
+    }
+
+    return (
+        <button
+            type="button"
+            className="flex w-full rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            aria-label={`${rowLabel(row)} · ${monthLongName(column.month, context.locale)}`}
+            onClick={() => editor.open(target)}
+            data-test={`forecast-cell-${row.id}-${column.month}`}
+        >
+            {content}
+        </button>
+    );
+}
+
+const ForecastTableContext = createContext<ForecastData | null>(null);
 
 /**
  * "Your plan": the forecast of the account month by month, by the user's
@@ -239,7 +452,10 @@ export function ForecastPlanTable({
     initiallyExpanded = [],
 }: ForecastPlanTableProps) {
     const locale = useLocale();
-    const rows = useMemo(() => buildPlanRows(forecast.plan), [forecast.plan]);
+    const rows = useMemo(
+        () => buildPlanRows(forecast.plan, forecast.alert.transfer),
+        [forecast.plan, forecast.alert.transfer],
+    );
     const groupIds = useMemo(() => groupRowIds(rows), [rows]);
     const [expanded, setExpanded] = useState<ExpandedState>(() =>
         Object.fromEntries(initiallyExpanded.map((id) => [id, true])),
@@ -287,135 +503,136 @@ export function ForecastPlanTable({
     const colSpan = forecast.months.length + 1;
 
     return (
-        <Card className="gap-0 py-0" data-test="forecast-plan">
-            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 border-b px-4 py-3.5">
-                <div className="flex flex-col gap-0.5">
-                    <CardTitle>{__('Your plan')}</CardTitle>
-                    <CardDescription>
-                        {__(
-                            'By your categories. Open one to see what is concrete and what is estimated.',
-                        )}
-                    </CardDescription>
-                </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                        setExpanded(
-                            allExpanded
-                                ? {}
-                                : Object.fromEntries(
-                                      groupIds.map((id) => [id, true]),
-                                  ),
-                        )
-                    }
-                    data-test="forecast-toggle-all"
-                >
-                    {allExpanded ? __('Collapse all') : __('Expand all')}
-                </Button>
-            </CardHeader>
-            <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] border-collapse text-[13px]">
-                    <thead>
-                        <tr className="border-b">
-                            <th
-                                scope="col"
-                                className={cn(
-                                    STICKY,
-                                    'min-w-[250px] px-4 py-2.5 text-left font-medium text-muted-foreground',
-                                )}
-                            >
-                                {__('Item')}
-                            </th>
-                            {forecast.months.map((column) => (
-                                <ColumnHeader
-                                    key={column.month}
-                                    column={column}
-                                    selected={column.month === selectedMonth}
-                                    context={context}
-                                />
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {table.getRowModel().rows.map((row) => {
-                            const data = row.original;
-
-                            if (
-                                data.type === 'section' ||
-                                data.type === 'add'
-                            ) {
-                                return (
-                                    <FullWidthRow
-                                        key={row.id}
-                                        row={data}
-                                        colSpan={colSpan}
-                                    />
-                                );
-                            }
-
-                            const isSummary = data.type === 'summary';
-                            const isChild =
-                                row.depth > 0 ||
-                                (data.type === 'line' &&
-                                    data.line.kind === 'transfer');
-
-                            return (
-                                <tr
-                                    key={row.id}
+        <ForecastTableContext.Provider value={forecast}>
+            <Card className="gap-0 py-0" data-test="forecast-plan">
+                <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 border-b px-4 py-3.5">
+                    <div className="flex flex-col gap-0.5">
+                        <CardTitle>{__('Your plan')}</CardTitle>
+                        <CardDescription>
+                            {__(
+                                'By your categories. Open one to see what is concrete and what is estimated; tap a figure to change it.',
+                            )}
+                        </CardDescription>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                            setExpanded(
+                                allExpanded
+                                    ? {}
+                                    : Object.fromEntries(
+                                          groupIds.map((id) => [id, true]),
+                                      ),
+                            )
+                        }
+                        data-test="forecast-toggle-all"
+                    >
+                        {allExpanded ? __('Collapse all') : __('Expand all')}
+                    </Button>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px] border-collapse text-[13px]">
+                        <thead>
+                            <tr className="border-b">
+                                <th
+                                    scope="col"
                                     className={cn(
-                                        data.type === 'group' && 'border-t',
-                                        isSummary && 'border-t bg-muted/50',
+                                        STICKY,
+                                        'min-w-[250px] px-4 py-2.5 text-left font-medium text-muted-foreground',
                                     )}
-                                    data-test={`forecast-row-${row.id}`}
                                 >
-                                    <th
-                                        scope="row"
-                                        className={cn(
-                                            STICKY,
-                                            'py-1 pr-4 text-left font-normal',
-                                            isChild ? 'pl-10' : 'pl-3',
-                                            isSummary &&
-                                                'bg-muted pl-4 font-medium',
-                                        )}
-                                    >
-                                        <RowHeader
-                                            row={row}
-                                            currencyCode={forecast.currencyCode}
+                                    {__('Item')}
+                                </th>
+                                {forecast.months.map((column) => (
+                                    <ColumnHeader
+                                        key={column.month}
+                                        column={column}
+                                        selected={
+                                            column.month === selectedMonth
+                                        }
+                                        context={context}
+                                    />
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {table.getRowModel().rows.map((row) => {
+                                const data = row.original;
+
+                                if (
+                                    data.type === 'section' ||
+                                    data.type === 'add'
+                                ) {
+                                    return (
+                                        <FullWidthRow
+                                            key={row.id}
+                                            row={data}
+                                            colSpan={colSpan}
                                         />
-                                    </th>
-                                    {forecast.months.map((column) => (
-                                        <td
-                                            key={column.month}
+                                    );
+                                }
+
+                                const isSummary = data.type === 'summary';
+                                const isChild =
+                                    row.depth > 0 ||
+                                    data.type === 'suggestion' ||
+                                    (data.type === 'line' &&
+                                        data.line.kind === 'transfer');
+
+                                return (
+                                    <tr
+                                        key={row.id}
+                                        className={cn(
+                                            data.type === 'group' && 'border-t',
+                                            isSummary && 'border-t bg-muted/50',
+                                        )}
+                                        data-test={`forecast-row-${row.id}`}
+                                    >
+                                        <th
+                                            scope="row"
                                             className={cn(
-                                                'p-0.5',
-                                                column.status === 'current' &&
-                                                    'bg-muted/30',
-                                                column.month ===
-                                                    selectedMonth && 'bg-muted',
+                                                STICKY,
+                                                'py-1 pr-4 text-left font-normal',
+                                                isChild ? 'pl-10' : 'pl-3',
+                                                isSummary &&
+                                                    'bg-muted pl-4 font-medium',
                                             )}
                                         >
-                                            {column.status === 'locked' ? (
-                                                <LockedCell />
-                                            ) : (
-                                                <PlanMonthCell
+                                            <RowHeader
+                                                row={row}
+                                                currencyCode={
+                                                    forecast.currencyCode
+                                                }
+                                            />
+                                        </th>
+                                        {forecast.months.map((column) => (
+                                            <td
+                                                key={column.month}
+                                                className={cn(
+                                                    'p-0.5',
+                                                    column.status ===
+                                                        'current' &&
+                                                        'bg-muted/30',
+                                                    column.month ===
+                                                        selectedMonth &&
+                                                        'bg-muted',
+                                                )}
+                                            >
+                                                <MonthCell
                                                     row={data}
-                                                    month={column.month}
-                                                    current={
-                                                        column.status ===
-                                                        'current'
-                                                    }
+                                                    column={column}
                                                     context={context}
                                                 />
-                                            )}
-                                        </td>
-                                    ))}
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-        </Card>
+                                            </td>
+                                        ))}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+        </ForecastTableContext.Provider>
     );
 }

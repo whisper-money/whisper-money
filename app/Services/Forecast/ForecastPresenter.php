@@ -32,11 +32,6 @@ class ForecastPresenter
      */
     private const PAST_MONTHS = 2;
 
-    /**
-     * Future months a user without Pro sees.
-     */
-    private const FREE_MONTHS = 1;
-
     public function __construct(
         private readonly ForecastPlanBuilder $builder,
         private readonly ForecastProjector $projector,
@@ -44,6 +39,7 @@ class ForecastPresenter
         private readonly ForecastAlertEvaluator $alerts,
         private readonly ForecastPastMonths $pastMonths,
         private readonly ForecastPlanRows $rows,
+        private readonly ForecastTransferSuggester $transfers,
     ) {}
 
     /**
@@ -67,7 +63,7 @@ class ForecastPresenter
 
         $plan = $this->builder->build($user, $spaceId, null, $horizon + 1, $today);
         $projected = collect($this->projector->project($plan->input)['accounts'])->keyBy('accountId');
-        $visibleCount = 1 + ($isPro ? $horizon : min(self::FREE_MONTHS, $horizon));
+        $visibleCount = 1 + ($isPro ? $horizon : min(ForecastEditWindow::FREE_MONTHS, $horizon));
         $thresholds = $included->mapWithKeys(fn (Account $account): array => [$account->id => $this->alerts->threshold($account->type, $projected[$account->id]['minimumBalance'])]);
         $alerts = $projected->map(fn (array $projection, string $id): array => $this->alerts->evaluate(array_slice($projection['months'], 0, $visibleCount), $thresholds[$id]))->all();
         $account = $this->selectedAccount($included, $accountId, $alerts);
@@ -79,10 +75,16 @@ class ForecastPresenter
             'forecast' => [
                 ...$base,
                 'currencyCode' => $account->currency_code,
-                'account' => [...$this->accountSummary($account, $projection['minimumBalance']), 'alertThreshold' => $thresholds[$account->id]],
+                'account' => [
+                    ...$this->accountSummary($account, $projection['minimumBalance']),
+                    'annualRateBps' => $this->projectionAccount($plan, $account->id)->annualRateBps,
+                    'alertThreshold' => $thresholds[$account->id],
+                ],
                 'accounts' => $included->map(fn (Account $other): array => [
                     'id' => $other->id,
                     'name' => $other->name,
+                    'type' => $other->type,
+                    'currencyCode' => $other->currency_code,
                     'hasAlert' => $this->isStrong($alerts[$other->id]),
                 ])->all(),
                 'months' => $this->monthColumns($visible, $locked),
@@ -91,6 +93,7 @@ class ForecastPresenter
                 'alert' => [
                     ...$alerts[$account->id],
                     'causes' => $this->causes($plan, $account->id, $alerts[$account->id]['month']),
+                    'transfer' => $this->transfers->suggest($account, $visible, $included, $projected->all(), $thresholds->all(), $today),
                 ],
                 'lockedAlertCount' => $isPro ? null : $this->alerts->strongCount($locked, $thresholds[$account->id]),
                 'kpis' => $this->kpis($visible, $this->projectionAccount($plan, $account->id)->openingBalance),
@@ -215,8 +218,10 @@ class ForecastPresenter
     }
 
     /**
-     * The engine's input for the selected account over the months shown, in
-     * the camelCase shape resources/js/lib/forecast/project.ts takes.
+     * The engine's input over the months shown, in the camelCase shape
+     * resources/js/lib/forecast/project.ts takes. Every included account is
+     * in it, the selected one first, so the page can show what a transfer
+     * does to both sides; an account's projection never depends on another's.
      *
      * @return array<string, mixed>
      */
@@ -224,23 +229,22 @@ class ForecastPresenter
     {
         $end = ForecastCalendar::horizonEnd($today, $months);
         $lastMonth = ForecastCalendar::monthKey($end);
-        $account = $this->projectionAccount($plan, $accountId);
+        $accounts = collect($plan->input->accounts)->sortBy(fn (ProjectionAccount $account): int => $account->id === $accountId ? 0 : 1)->values();
 
         return [
-            'accounts' => [[
+            'accounts' => $accounts->map(fn (ProjectionAccount $account): array => [
                 'id' => $account->id,
                 'openingBalance' => $account->openingBalance,
                 'annualRateBps' => $account->annualRateBps,
                 'minimumBalance' => $account->minimumBalance,
-            ]],
+            ])->all(),
             'occurrences' => array_values(array_map(
                 fn (Occurrence $occurrence): array => $occurrence->toArray(),
-                array_filter($plan->input->occurrences, fn (Occurrence $occurrence): bool => $occurrence->date <= $end
-                    && ($occurrence->accountId === $accountId || $occurrence->destinationAccountId === $accountId)),
+                array_filter($plan->input->occurrences, fn (Occurrence $occurrence): bool => $occurrence->date <= $end),
             )),
             'estimates' => array_values(array_map(
                 fn (MonthlyEstimate $estimate): array => ['accountId' => $estimate->accountId, 'month' => $estimate->month, 'amount' => $estimate->amount],
-                array_filter($plan->input->estimates, fn (MonthlyEstimate $estimate): bool => $estimate->accountId === $accountId && $estimate->month <= $lastMonth),
+                array_filter($plan->input->estimates, fn (MonthlyEstimate $estimate): bool => $estimate->month <= $lastMonth),
             )),
             'startDate' => $today,
             'horizonMonths' => $months,

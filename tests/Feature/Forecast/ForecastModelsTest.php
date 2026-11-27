@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ForecastFrequency;
+use App\Features\Forecast;
 use App\Models\Account;
 use App\Models\ForecastAccountSetting;
 use App\Models\ForecastAlert;
@@ -18,6 +19,7 @@ use App\Services\Forecast\Data\ExpandableItem;
 use App\Services\Forecast\OccurrenceExpander;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Route;
+use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 
 it('creates every forecast model from its factory', function (string $model) {
     expect($model::factory()->create()->exists)->toBeTrue();
@@ -126,13 +128,11 @@ it('defaults the forecast email preference to on', function () {
     expect($user->setting()->first()->forecast_notify_email)->toBeTrue();
 });
 
-it('adds only the read-only forecast page, which answers 404 with the flag off (ForecastPageTest)', function () {
+it('keeps every forecast route behind the Forecast flag (ForecastPageTest, ForecastEditingTest)', function () {
     $forecastRoutes = collect(Route::getRoutes()->getRoutes())
-        ->filter(fn ($route): bool => str_contains($route->uri(), 'forecast') || str_starts_with((string) $route->getName(), 'forecast'))
-        ->map(fn ($route): string => implode('|', $route->methods()).' '.$route->getName())
-        ->values()
-        ->all();
+        ->filter(fn ($route): bool => str_contains($route->uri(), 'forecast') || str_starts_with((string) $route->getName(), 'forecast'));
 
-    expect($forecastRoutes)->toBe(['GET|HEAD forecast.index'])
+    expect($forecastRoutes)->not->toBeEmpty()
+        ->and($forecastRoutes->every(fn ($route): bool => in_array(EnsureFeaturesAreActive::class.':'.Forecast::class, $route->gatherMiddleware(), true)))->toBeTrue()
         ->and(Account::factory()->create()->exists)->toBeTrue();
 });

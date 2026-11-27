@@ -18,6 +18,7 @@ final readonly class DriftSuggestion
         public string $itemId,
         public int $amount,
         public string $since,
+        public ?string $lastPaidOn = null,
     ) {}
 
     /**

@@ -20,6 +20,11 @@ use App\Http\Controllers\Dashboards\DefaultDashboardController;
 use App\Http\Controllers\DashboardSetupDismissalController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EmailUnsubscribeController;
+use App\Http\Controllers\Forecast\ForecastAccountSettingController;
+use App\Http\Controllers\Forecast\ForecastEstimateController;
+use App\Http\Controllers\Forecast\ForecastItemController;
+use App\Http\Controllers\Forecast\ForecastItemDriftController;
+use App\Http\Controllers\Forecast\ForecastSpikeController;
 use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\IntegrationsController;
@@ -343,6 +348,13 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     // The cash-flow forecast, behind its flag: 404 without it.
     Route::middleware(EnsureFeaturesAreActive::using(Forecast::class))->group(function () {
         Route::get('forecast', [ForecastController::class, 'index'])->name('forecast.index');
+        Route::post('forecast/items', [ForecastItemController::class, 'store'])->name('forecast.items.store');
+        Route::patch('forecast/items/{item}', [ForecastItemController::class, 'update'])->name('forecast.items.update');
+        Route::delete('forecast/items/{item}', [ForecastItemController::class, 'destroy'])->name('forecast.items.destroy');
+        Route::post('forecast/items/{item}/drift', [ForecastItemDriftController::class, 'store'])->name('forecast.items.drift');
+        Route::post('forecast/estimates', [ForecastEstimateController::class, 'store'])->name('forecast.estimates.store');
+        Route::post('forecast/spikes/{transaction}', [ForecastSpikeController::class, 'store'])->name('forecast.spikes.store');
+        Route::patch('forecast/accounts/{account}', [ForecastAccountSettingController::class, 'update'])->name('forecast.accounts.update');
     });
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');

@@ -4,7 +4,9 @@ namespace App\Services\Forecast;
 
 use App\Models\ForecastItem;
 use App\Models\ForecastMatch;
+use App\Models\User;
 use App\Services\Forecast\Data\DriftSuggestion;
+use App\Services\Forecast\Data\ExpandableItem;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -15,13 +17,16 @@ use Illuminate\Database\Eloquent\Collection;
  * amount the suggestion goes away until it drifts again. A transfer is read
  * from its sending leg. Computed on the fly: nothing is stored.
  *
- * The edit flow of a later phase reads it; until then only the tests do.
- *
- * @api
+ * The forecast plan offers it on the line, and accepting it changes the
+ * amount from the first occurrence after the latest payment (startsOn()).
  */
 class ForecastDrift
 {
     private const CONSECUTIVE_PAYMENTS = 2;
+
+    public function __construct(
+        private readonly OccurrenceExpander $expander,
+    ) {}
 
     /**
      * @param  Collection<int, ForecastItem>  $items
@@ -57,6 +62,19 @@ class ForecastDrift
     }
 
     /**
+     * The occurrence an accepted suggestion updates the line from: the first
+     * one scheduled after the latest payment, and not before today.
+     */
+    public function startsOn(User $user, ForecastItem $item, DriftSuggestion $suggestion): string
+    {
+        $today = $user->localToday()->toDateString();
+        $from = $suggestion->lastPaidOn === null ? $today : max($today, ForecastCalendar::nextDay($suggestion->lastPaidOn));
+        $next = $this->expander->expand([ExpandableItem::fromModel($item)], $from, ForecastCalendar::horizonEnd($from, 13))[0] ?? null;
+
+        return $next->occurrenceDate ?? $from;
+    }
+
+    /**
      * @param  Collection<int, ForecastMatch>  $matches  The line's, newest first.
      */
     private function evaluate(ForecastItem $item, Collection $matches): ?DriftSuggestion
@@ -73,7 +91,12 @@ class ForecastDrift
             return null;
         }
 
-        return new DriftSuggestion($item->id, $latest->first()->transaction->amount, $latest->last()->occurrence_date->toDateString());
+        return new DriftSuggestion(
+            $item->id,
+            $latest->first()->transaction->amount,
+            $latest->last()->occurrence_date->toDateString(),
+            $latest->first()->occurrence_date->toDateString(),
+        );
     }
 
     /**

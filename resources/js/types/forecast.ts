@@ -1,4 +1,5 @@
 import {
+    type ExpandableForecastItem,
     type ProjectedMonth,
     type ProjectionInput,
 } from '@/lib/forecast/types';
@@ -29,6 +30,8 @@ export type ForecastLineSource = 'detected' | 'manual' | 'suggested';
 export interface ForecastAccountTab {
     id: string;
     name: string;
+    type: string;
+    currencyCode: string;
     hasAlert: boolean;
 }
 
@@ -38,6 +41,8 @@ export interface ForecastAccountSummary {
     type: string;
     currencyCode: string;
     minimumBalance: number | null;
+    /** Yearly growth of an investment or property, in basis points. */
+    annualRateBps: number | null;
     /** The balance the warnings read against; null for a card or a loan without a minimum. */
     alertThreshold: number | null;
 }
@@ -63,6 +68,23 @@ export interface ForecastAlert {
     minDate: string | null;
     softMonths: string[];
     causes: { name: string; amount: number }[];
+    /** The transfer the strong warning offers, when another account can lend. */
+    transfer: ForecastTransferSuggestion | null;
+}
+
+export interface ForecastTransferSuggestion {
+    fromAccountId: string;
+    /** Positive, in minor units. */
+    amount: number;
+    date: string;
+    month: string;
+}
+
+/** A payment that paid the line, signed from the line's own account. */
+export interface ForecastLinePayment {
+    occurrenceDate: string;
+    planned: number;
+    real: number;
 }
 
 export interface ForecastKpis {
@@ -91,6 +113,19 @@ export interface ForecastLine {
     counterpartyName: string | null;
     amounts: Record<string, number>;
     current: ForecastCurrentCell;
+    accountId: string;
+    categoryId: string | null;
+    /** The line as the client engine expands it, up to the last month shown. */
+    definition: ExpandableForecastItem;
+    /** The date the schedule gives the line's occurrence in each month shown. */
+    occurrenceDates: Record<string, string>;
+    /** What a transaction's description must contain to pay it, when the rule is that simple. */
+    matchText: string | null;
+    amountTolerance: number;
+    dateWindowDays: number;
+    payments: ForecastLinePayment[];
+    /** "It is now 950. Update from December?" */
+    drift: { amount: number; from: string } | null;
 }
 
 export interface ForecastEstimate {
