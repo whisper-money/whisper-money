@@ -134,7 +134,7 @@ describe('with the Forecast flag off', function () {
 });
 
 describe('the review data', function () {
-    it('is only sent when the page asks for it, for the account shown', function () {
+    it('is only sent when the page asks for it, for every account even when the page shows one', function () {
         $this->actingAs($this->user)->get(route('forecast.index', ['account' => $this->savings->id]))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
@@ -143,7 +143,7 @@ describe('the review data', function () {
                 ->where('reviewPrompt.hasLines', false)
                 ->loadDeferredProps(fn (AssertableInertia $reload) => $reload->where('newSuggestionCount', 1))
                 ->reloadOnly('review', fn (AssertableInertia $reload) => $reload
-                    ->where('review.accountId', $this->savings->id)
+                    ->where('review.accountId', null)
                     ->missing('review.recurring')
                     ->has('review.annual', 1)
                     ->has('review.accounts', 2)));

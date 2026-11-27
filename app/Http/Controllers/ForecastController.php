@@ -22,8 +22,8 @@ use Inertia\Response;
  * own. How many suggestions wait for an answer
  * (`newSuggestionCount`) comes right after the page, since working it out
  * when it is not cached reads 18 months of history; the review itself
- * (`review`), of the account shown or of every account in the "All
- * accounts" view, is only sent when the page asks for it. The "What you pay
+ * (`review`), always of every included account whichever one the page
+ * shows, is only sent when the page asks for it. The "What you pay
  * every month" card (`recurringCharges`) runs the recurring detector live,
  * so it comes after the page too, on its own.
  */
@@ -35,7 +35,6 @@ class ForecastController extends Controller
         $spaceId = $user->activeSpace()->id;
 
         $page = $presenter->present($user, $spaceId, $request->account(), $request->horizon());
-        $reviewedAccountId = $page['forecast']['account']['id'] ?? null;
 
         return Inertia::render('forecast/index', [
             ...$page,
@@ -45,7 +44,7 @@ class ForecastController extends Controller
             ],
             'newSuggestionCount' => Inertia::defer(fn (): int => $count->for($user, $spaceId)),
             'recurringCharges' => Inertia::defer(fn (): array => $recurring->present($user, $spaceId), 'recurring-charges'),
-            'review' => Inertia::optional(fn (): array => $review->present($user, $spaceId, $reviewedAccountId)),
+            'review' => Inertia::optional(fn (): array => $review->present($user, $spaceId)),
         ]);
     }
 }
