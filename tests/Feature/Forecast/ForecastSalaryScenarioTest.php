@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\ForecastEstimateKind;
 use App\Models\Account;
 use App\Models\AccountBalance;
@@ -20,7 +21,7 @@ use App\Services\Forecast\ForecastProjector;
 beforeEach(function () {
     $this->travelTo('2026-10-10 12:00:00');
     $this->user = User::factory()->create(['currency_code' => 'EUR']);
-    $this->checking = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->checking = Account::factory()->create(['user_id' => $this->user->id, 'type' => AccountType::Checking, 'currency_code' => 'EUR']);
     AccountBalance::factory()->create(['account_id' => $this->checking->id, 'balance_date' => '2026-10-09', 'balance' => 120000]);
 
     $this->salary = forecastIncomeCategory($this->user, name: 'Salary');

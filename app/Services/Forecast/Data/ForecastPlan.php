@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Collection;
  * What the forecast is worked out from: the projector's input, plus the
  * per-category estimates behind its monthly ones and the usual transfers
  * between the user's accounts behind its estimated transfer occurrences,
- * which the page shows as rows.
+ * which the page shows as rows, and the balance trends behind the accounts
+ * that only have balances.
  *
  * The forecast page of a later phase reads it; until then only the tests do.
  *
@@ -21,12 +22,14 @@ final readonly class ForecastPlan
      * @param  list<CategoryEstimate>  $categoryEstimates
      * @param  Collection<int, ForecastItem>  $items  The lines of the included accounts, versions and overrides loaded.
      * @param  list<TransferEstimate>  $transferEstimates
+     * @param  array<string, BalanceTrend>  $trends  By account id: the selected accounts that only have a balance history.
      */
     public function __construct(
         public ProjectionInput $input,
         public array $categoryEstimates,
         public Collection $items = new Collection,
         public array $transferEstimates = [],
+        public array $trends = [],
     ) {}
 
     /**

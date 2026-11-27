@@ -30,7 +30,12 @@ import {
     type AllPlanRow,
 } from '@/lib/forecast/all-accounts';
 import { isAdjustableEstimate } from '@/lib/forecast/edits';
-import { balanceTone, isShort, monthLongName } from '@/lib/forecast/format';
+import {
+    balanceTone,
+    isShort,
+    monthLongName,
+    trendLabel,
+} from '@/lib/forecast/format';
 import { groupName } from '@/lib/forecast/plan-rows';
 import { cn } from '@/lib/utils';
 import {
@@ -189,7 +194,11 @@ function RowHeader({
                 <TitleWithHint
                     name={__('Estimated growth')}
                     hint={context.forecast.accountForecasts
-                        .filter((account) => (account.annualRateBps ?? 0) > 0)
+                        .filter(
+                            (account) =>
+                                (account.annualRateBps ?? 0) > 0 &&
+                                account.trend === null,
+                        )
                         .map((account) =>
                             __(':account · +:rate% a year', {
                                 account: account.name,
@@ -220,17 +229,31 @@ function RowHeader({
     }
 }
 
-/** What an account's closing row says under its name: projected only, or its wanted minimum. */
+/** What an account's closing row says under its name: projected only, or its wanted minimum, then its balance trend. */
 function accountRowHint(
     account: ForecastAccountForecast,
     format: (amount: number, currencyCode: string) => string,
 ): string | undefined {
+    const trend = trendLabel(account.trend, (amount) =>
+        format(amount, account.currencyCode),
+    );
+    const parts = [accountRowState(account, format), trend].filter(
+        (part) => part !== null,
+    );
+
+    return parts.length === 0 ? undefined : parts.join(' · ');
+}
+
+function accountRowState(
+    account: ForecastAccountForecast,
+    format: (amount: number, currencyCode: string) => string,
+): string | null {
     if (account.projectionOnly) {
         return __('Projection only, never warns');
     }
 
     return account.minimumBalance === null
-        ? undefined
+        ? null
         : __('Wanted minimum :amount', {
               amount: format(account.minimumBalance, account.currencyCode),
           });
@@ -395,8 +418,13 @@ function MonthFigure({
             return growth === 0 ? (
                 EMPTY_CELL
             ) : (
-                <PlanCell className="text-success">
-                    +{number(growth, forecast.currencyCode)}
+                <PlanCell
+                    className={
+                        growth > 0 ? 'text-success' : 'text-muted-foreground'
+                    }
+                >
+                    {growth > 0 ? '+' : ''}
+                    {number(growth, forecast.currencyCode)}
                 </PlanCell>
             );
         }

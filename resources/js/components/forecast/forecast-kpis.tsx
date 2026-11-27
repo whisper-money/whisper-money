@@ -15,6 +15,7 @@ import {
     dayOf,
     monthLongName,
     monthWithYear,
+    trendLabel,
 } from '@/lib/forecast/format';
 import {
     type ForecastAllData,
@@ -53,18 +54,21 @@ function wantedMinimumLabel(
           });
 }
 
-/** "Wanted minimum 300 € · change": the account's threshold, and the way to its settings. */
+/**
+ * "Wanted minimum 300 € · change": the account's threshold, and the way to
+ * its settings; then, for an account with only a balance history, the trend
+ * it is projected along.
+ */
 export function WantedMinimum({ forecast }: { forecast: ForecastData }) {
     const { formatAmount } = useFormatAmount();
     const editor = useForecastEditor();
+    const format = (amount: number) =>
+        formatAmount(amount, forecast.currencyCode, { fractionDigits: 0 });
+    const trend = trendLabel(forecast.account.trend, format);
 
     return (
         <>
-            {wantedMinimumLabel(forecast, (amount) =>
-                formatAmount(amount, forecast.currencyCode, {
-                    fractionDigits: 0,
-                }),
-            )}
+            {wantedMinimumLabel(forecast, format)}
             {editor && (
                 <>
                     {' · '}
@@ -77,6 +81,11 @@ export function WantedMinimum({ forecast }: { forecast: ForecastData }) {
                         {__('change')}
                     </button>
                 </>
+            )}
+            {trend && (
+                <span className="block" data-test="forecast-trend">
+                    {trend}
+                </span>
             )}
         </>
     );

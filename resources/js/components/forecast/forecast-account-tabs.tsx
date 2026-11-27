@@ -1,6 +1,8 @@
 import { index as forecastIndex } from '@/actions/App/Http/Controllers/ForecastController';
 import { useForecastEditor } from '@/components/forecast/forecast-editor';
 import { Button } from '@/components/ui/button';
+import { useFormatAmount } from '@/hooks/use-format-amount';
+import { trendLabel } from '@/lib/forecast/format';
 import { cn } from '@/lib/utils';
 import {
     type ForecastAccountTab,
@@ -26,7 +28,8 @@ interface ForecastAccountTabsProps {
 /**
  * "All accounts", then the accounts the forecast covers, one pill each, the
  * one with a problem marked with a red dot and a projected-only one said
- * so, then the way to choose the accounts.
+ * so, with the trend of one that only has a balance history, then the way
+ * to choose the accounts.
  */
 export function ForecastAccountTabs({
     accounts,
@@ -34,6 +37,7 @@ export function ForecastAccountTabs({
     horizon,
 }: ForecastAccountTabsProps) {
     const editor = useForecastEditor();
+    const { formatAmount } = useFormatAmount();
 
     return (
         <nav aria-label={__('Account')} className="flex flex-wrap gap-2">
@@ -48,6 +52,14 @@ export function ForecastAccountTabs({
             </Link>
             {accounts.map((account) => {
                 const selected = account.id === selectedId;
+                const trend = trendLabel(
+                    account.trend,
+                    (amount) =>
+                        formatAmount(amount, account.currencyCode, {
+                            fractionDigits: 0,
+                        }),
+                    true,
+                );
 
                 return (
                     <Link
@@ -65,6 +77,9 @@ export function ForecastAccountTabs({
                             <span className="text-xs opacity-70">
                                 {__('projection only')}
                             </span>
+                        )}
+                        {trend && (
+                            <span className="text-xs opacity-70">{trend}</span>
                         )}
                         {account.hasAlert && (
                             <span

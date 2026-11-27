@@ -52,6 +52,8 @@ class MonthAccumulator {
     growth = 0;
     estimated = 0;
     estimatedIncome = 0;
+    /** The uncertainty of a balance trend, added to the band but not to the pessimistic minimum. */
+    trendBand = 0;
     readonly balances = new Map<string, number>();
 
     constructor(readonly month: string) {}
@@ -85,6 +87,7 @@ class MonthAccumulator {
         this.growth += other.growth;
         this.estimated += other.estimated;
         this.estimatedIncome += other.estimatedIncome;
+        this.trendBand += other.trendBand;
     }
 
     addEstimate(kind: MonthlyEstimateKind, amount: number): void {
@@ -97,7 +100,7 @@ class MonthAccumulator {
 
     toProjectedMonth(): ProjectedMonth {
         const min = this.min ?? this.close;
-        const band =
+        const estimateBand =
             intdiv(
                 this.estimated * EXPENSE_BAND_NUMERATOR,
                 EXPENSE_BAND_DENOMINATOR,
@@ -114,8 +117,8 @@ class MonthAccumulator {
             growth: this.growth,
             estimated: this.estimated,
             estimatedIncome: this.estimatedIncome,
-            band,
-            pessimisticMin: min - band,
+            band: estimateBand + this.trendBand,
+            pessimisticMin: min - estimateBand,
         };
     }
 }
@@ -302,6 +305,17 @@ function estimatedByDay(
     return byDay;
 }
 
+/**
+ * The account's balance trend, or else a twelfth of its yearly rate on the
+ * month's close, truncated to whole minor units.
+ */
+function monthlyGrowth(balance: number, account: ProjectionAccount): number {
+    return (
+        account.trendSlope ??
+        intdiv(balance * (account.annualRateBps ?? 0), 120_000)
+    );
+}
+
 function projectMonth(
     account: ProjectionAccount,
     month: CalendarMonth,
@@ -319,10 +333,8 @@ function projectMonth(
         balance += estimated.get(day) ?? 0;
 
         if (day === month.lastDay && month.firstDay === 1) {
-            accumulator.growth = intdiv(
-                balance * (account.annualRateBps ?? 0),
-                120_000,
-            );
+            accumulator.growth = monthlyGrowth(balance, account);
+            accumulator.trendBand = account.trendBand ?? 0;
             balance += accumulator.growth;
         }
 

@@ -1,6 +1,7 @@
 import {
     type ForecastLineKind,
     type ForecastLineSource,
+    type ForecastTrend,
 } from '@/types/forecast';
 import { formatDate, formatMonthName } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -125,4 +126,29 @@ export function listOf(items: string[], locale: string): string {
         style: 'long',
         type: 'conjunction',
     }).format(items);
+}
+
+/**
+ * What an account's balance trend says, or null without one: "Trend of the
+ * last 12 months: +300 €/month", or, without enough history, that it is kept
+ * flat. `short` is the version a tab or a picker has room for.
+ */
+export function trendLabel(
+    trend: ForecastTrend | null,
+    format: (amount: number) => string,
+    short = false,
+): string | null {
+    if (trend === null) {
+        return null;
+    }
+
+    if (trend.monthly === null) {
+        return short ? __('kept flat') : __('Not enough history: kept flat');
+    }
+
+    const amount = `${trend.monthly > 0 ? '+' : ''}${format(trend.monthly)}`;
+
+    return short
+        ? __('trend :amount/month', { amount })
+        : __('Trend of the last 12 months: :amount/month', { amount });
 }

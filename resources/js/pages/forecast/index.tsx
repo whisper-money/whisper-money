@@ -360,7 +360,7 @@ function ForecastAllContent({
             />
             <p className="text-xs text-muted-foreground">
                 {__(
-                    'Transfers between your accounts go apart: they change the balance of each account but not the total. The growth uses the yearly rate of each investment account. The likely range applies to the estimate only.',
+                    'Transfers between your accounts go apart: they change the balance of each account but not the total. The growth uses the yearly rate of each investment account, or the trend of its last 12 months when it only has balances. The likely range applies to the estimates and those trends only.',
                 )}
             </p>
         </>

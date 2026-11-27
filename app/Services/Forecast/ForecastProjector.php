@@ -18,7 +18,9 @@ use App\Services\Forecast\Data\ProjectionInput;
  * day profile, or evenly without one (see MonthlyEstimate); a transfer takes money from one account and gives it to the other, so it
  * leaves the total untouched. An account with a yearly rate grows by a twelfth
  * of it on the close of every whole month it covers (the month the projection
- * starts in is partial, so it does not grow). All in integer minor units, so
+ * starts in is partial, so it does not grow); one with a balance trend grows
+ * by the trend's slope instead, and its band widens by the trend's on those
+ * same months (see MonthAccumulator). All in integer minor units, so
  * the TypeScript port in resources/js/lib/forecast/project.ts gives the same
  * figures, which tests/Fixtures/forecast-parity.json checks. Exact while
  * amounts times a profile's total weight (or times a rate in basis points)
@@ -118,7 +120,8 @@ final class ForecastProjector
             $balance += $estimated[$day] ?? 0;
 
             if ($day === $month->lastDay && $month->isWhole()) {
-                $accumulator->growth = $this->monthlyGrowth($balance, $account->annualRateBps);
+                $accumulator->growth = $this->monthlyGrowth($balance, $account);
+                $accumulator->trendBand = $account->trendBand ?? 0;
                 $balance += $accumulator->growth;
             }
 
@@ -129,12 +132,12 @@ final class ForecastProjector
     }
 
     /**
-     * A twelfth of the yearly rate on the month's close, truncated to whole
-     * minor units.
+     * The account's balance trend, or else a twelfth of its yearly rate on
+     * the month's close, truncated to whole minor units.
      */
-    private function monthlyGrowth(int $balance, ?int $annualRateBps): int
+    private function monthlyGrowth(int $balance, ProjectionAccount $account): int
     {
-        return intdiv($balance * ($annualRateBps ?? 0), 120_000);
+        return $account->trendSlope ?? intdiv($balance * ($account->annualRateBps ?? 0), 120_000);
     }
 
     /**

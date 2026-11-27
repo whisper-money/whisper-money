@@ -65,8 +65,27 @@ final readonly class ForecastContext
             'projectionOnly' => ForecastAccounts::isProjectionOnly($account->type),
             'minimumBalance' => $this->projected[$account->id]['minimumBalance'],
             'annualRateBps' => $this->projectionAccount($account->id)->annualRateBps,
+            'trend' => $this->trend($account->id),
             'alertThreshold' => $this->thresholds[$account->id],
         ];
+    }
+
+    /**
+     * The account's balance trend as the page shows it (see
+     * BalanceTrend::toArray()), or null when it is projected from its
+     * movements, or from its yearly rate for lack of a line.
+     *
+     * @return array{monthly: int|null, band: int|null, points: int}|null
+     */
+    public function trend(string $accountId): ?array
+    {
+        $trend = $this->plan->trends[$accountId] ?? null;
+
+        if ($trend === null || (! $trend->isProjected() && ($this->projectionAccount($accountId)->annualRateBps ?? 0) !== 0)) {
+            return null;
+        }
+
+        return $trend->toArray();
     }
 
     public function projectionAccount(string $accountId): ProjectionAccount

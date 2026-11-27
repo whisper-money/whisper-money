@@ -295,6 +295,42 @@ describe('the forecast page', () => {
         ).toBeNull();
     });
 
+    it('says the trend an account with only a balance history is projected along', () => {
+        const trend = { monthly: 29986, band: 3023, points: 12 };
+        const base = forecast();
+        renderPage(
+            forecast({
+                account: { ...base.account, trend },
+                accounts: [base.accounts[0], { ...base.accounts[1], trend }],
+            }),
+        );
+
+        expect(
+            document.querySelector('[data-test="forecast-trend"]'),
+        ).toHaveTextContent('Trend of the last 12 months: +€299.86/month');
+        expect(
+            within(
+                screen.getByRole('navigation', { name: 'Account' }),
+            ).getByRole('link', { name: /Savings/ }),
+        ).toHaveTextContent('trend +€299.86/month');
+    });
+
+    it('says an account without enough history is kept flat', () => {
+        const base = forecast();
+        renderPage(
+            forecast({
+                account: {
+                    ...base.account,
+                    trend: { monthly: null, band: null, points: 3 },
+                },
+            }),
+        );
+
+        expect(
+            document.querySelector('[data-test="forecast-trend"]'),
+        ).toHaveTextContent('Not enough history: kept flat');
+    });
+
     it('says the account holds up when nothing is wrong', () => {
         renderPage(
             forecast({
@@ -1087,6 +1123,28 @@ describe('the "All accounts" view', () => {
         expect(row('total')).toHaveTextContent(
             String((total[1].close as number) / 100),
         );
+    });
+
+    it('says the trend of an account with only a balance history on its close, out of the yearly rates', () => {
+        const base = all();
+        renderPage(
+            all({
+                accountForecasts: [
+                    base.accountForecasts[0],
+                    {
+                        ...base.accountForecasts[1],
+                        annualRateBps: null,
+                        trend: { monthly: -1500, band: 800, points: 6 },
+                    },
+                ],
+            }),
+        );
+
+        expect(row('account:savings')).toHaveTextContent(
+            'Trend of the last 12 months: €-15/month',
+        );
+        // The growth row stays for the trend, without a yearly rate to name.
+        expect(row('growth')).not.toHaveTextContent('+12% a year');
     });
 
     it("edits a line on its own account and waits for the server's answer", () => {
