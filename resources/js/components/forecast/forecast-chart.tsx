@@ -34,6 +34,8 @@ import {
     Bar,
     Cell,
     ComposedChart,
+    Curve,
+    type CurveProps,
     Line,
     ReferenceArea,
     ReferenceLine,
@@ -76,6 +78,27 @@ function barFill(point: ForecastChartPoint, series: 'income' | 'expenses') {
     }
 
     return series === 'income' ? INCOME : EXPENSE;
+}
+
+/**
+ * The hover line over a month, left out on a month locked behind Pro, which
+ * has no tooltip to go with it.
+ */
+function MonthCursor({
+    months,
+    payloadIndex,
+    ...props
+}: CurveProps & {
+    months: ForecastChartPoint[];
+    payloadIndex?: string | number | null;
+}) {
+    const point = months[Number(payloadIndex)];
+
+    if (!point || point.status === 'locked') {
+        return null;
+    }
+
+    return <Curve {...props} />;
 }
 
 function minTone(min: number, threshold: number | null): string {
@@ -350,7 +373,7 @@ export function ForecastChart({
                             />
                         )}
                         <ChartTooltip
-                            cursor={{ fill: 'var(--muted)', fillOpacity: 0.5 }}
+                            cursor={<MonthCursor months={points} />}
                             content={({ active, label, coordinate }) => (
                                 <ForecastChartTooltip
                                     active={active}

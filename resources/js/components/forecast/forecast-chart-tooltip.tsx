@@ -132,7 +132,9 @@ export function ForecastChartTooltip({
                         label={__('Expenses')}
                     >
                         <AmountDisplay
-                            amountInCents={-data.expenses}
+                            amountInCents={
+                                data.expenses === 0 ? 0 : -data.expenses
+                            }
                             currencyCode={currency}
                         />
                     </Row>
