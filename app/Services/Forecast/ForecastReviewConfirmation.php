@@ -4,6 +4,7 @@ namespace App\Services\Forecast;
 
 use App\Enums\ForecastFrequency;
 use App\Models\ForecastDismissal;
+use App\Models\ForecastReviewCompletion;
 use App\Models\User;
 use App\Services\Forecast\Data\ForecastCandidate;
 use Illuminate\Support\Facades\Cache;
@@ -19,7 +20,8 @@ use Illuminate\Validation\ValidationException;
  * edits are stored as they are made (see ForecastEstimateController), so
  * nothing of it comes here. Suggestions are read again here and named by
  * their key, so a suggestion the browser made up, or one that changed since
- * the review opened, is refused.
+ * the review opened, is refused. The review is then marked answered in the
+ * space, since it may have added no line (see ForecastReviewCompletion).
  *
  * Answers are applied one at a time per user: a second submit (a double
  * click, another tab) reads the suggestions after the first one stored its
@@ -81,6 +83,11 @@ class ForecastReviewConfirmation
             foreach ($answers['manual'] ?? [] as $payment) {
                 $this->writer->manual($user, $spaceId, $payment['accountId'], $payment['name'], $payment['amount'], $payment['month'], ForecastFrequency::from($payment['frequency']));
             }
+
+            ForecastReviewCompletion::query()->updateOrCreate(
+                ['user_id' => $user->id, 'space_id' => $spaceId],
+                ['completed_at' => now()],
+            );
         });
     }
 

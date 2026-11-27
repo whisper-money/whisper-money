@@ -2,6 +2,8 @@
 
 namespace App\Services\Forecast;
 
+use App\Enums\ForecastEstimateBasis;
+use App\Enums\ForecastEstimateKind;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\User;
@@ -40,7 +42,9 @@ class ForecastReviewEstimates
     {
         $month = ForecastCalendar::monthKey(ForecastCalendar::monthStart($today, 1));
         $plan = $this->builder->build($user, $spaceId, $accountId === null ? null : [$accountId], 2, $today);
-        $estimates = array_values(array_filter($plan->categoryEstimates, fn (CategoryEstimate $estimate): bool => $estimate->month === $month && $estimate->amount > 0));
+        // A category the user set to zero stays, so the figure can be changed back.
+        $estimates = array_values(array_filter($plan->categoryEstimates, fn (CategoryEstimate $estimate): bool => $estimate->month === $month
+            && ($estimate->amount > 0 || $estimate->basis === ForecastEstimateBasis::Adjustment)));
         $names = Category::query()->whereIn('id', array_filter(array_map(fn (CategoryEstimate $estimate): ?string => $estimate->categoryId, $estimates)))->pluck('name', 'id');
         $rows = array_map(fn (CategoryEstimate $estimate): array => $this->row($estimate, $accounts, $names->get((string) $estimate->categoryId)), $estimates);
         $totals = $this->totals($user, $estimates, $accounts, $today);
@@ -48,8 +52,8 @@ class ForecastReviewEstimates
         return [
             'month' => $month,
             'currencyCode' => (string) $user->currency_code,
-            'income' => $this->sorted(array_values(array_filter($rows, fn (array $row): bool => $row['kind'] === 'income'))),
-            'expenses' => $this->sorted(array_values(array_filter($rows, fn (array $row): bool => $row['kind'] === 'expense'))),
+            'income' => $this->sorted(array_values(array_filter($rows, fn (array $row): bool => $row['kind'] === ForecastEstimateKind::Income->value))),
+            'expenses' => $this->sorted(array_values(array_filter($rows, fn (array $row): bool => $row['kind'] === ForecastEstimateKind::Expense->value))),
             'transfers' => $this->transfers($plan->transferEstimates, $month, $accounts),
             'totals' => $totals['totals'],
             'unconvertedCurrencies' => $totals['unconverted'],

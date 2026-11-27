@@ -78,40 +78,32 @@ function AddButton() {
 }
 
 /**
- * Where closing the review is remembered, per user: `1` when it was skipped,
- * `done` once it was answered. Either way the review that opens on its own
- * the first time does not open again on every visit; once answered, the
- * page no longer asks for it either.
+ * Where skipping the review is remembered, per user, so the review that opens
+ * on its own the first time does not open again on every visit.
  */
-function closedKey(userId: string | undefined): string {
+function skippedKey(userId: string | undefined): string {
     return `forecast-review-skipped:${userId ?? 'guest'}`;
 }
 
-function reviewClosed(userId: string | undefined): string | null {
+function reviewWasSkipped(userId: string | undefined): boolean {
     try {
-        return window.localStorage.getItem(closedKey(userId));
+        return window.localStorage.getItem(skippedKey(userId)) === '1';
     } catch {
-        return null;
+        return false;
     }
 }
 
-function rememberReviewClosed(
-    userId: string | undefined,
-    how: 'skipped' | 'done',
-): void {
+function rememberReviewSkipped(userId: string | undefined): void {
     try {
-        window.localStorage.setItem(
-            closedKey(userId),
-            how === 'done' ? 'done' : '1',
-        );
+        window.localStorage.setItem(skippedKey(userId), '1');
     } catch {
         // Private mode: the review may open again next time, which is fine.
     }
 }
 
-function forgetReviewClosed(userId: string | undefined): void {
+function forgetReviewSkipped(userId: string | undefined): void {
     try {
-        window.localStorage.removeItem(closedKey(userId));
+        window.localStorage.removeItem(skippedKey(userId));
     } catch {
         // Private mode: nothing was remembered.
     }
@@ -119,22 +111,22 @@ function forgetReviewClosed(userId: string | undefined): void {
 
 /**
  * The page's review: it opens on its own the first time the user comes with
- * no line at all, and on demand from the plan's link, the empty state or the
- * "yearly payments" shortcut. Closing it without saving, while there is still
- * no line, counts as skipping it; saving it counts as done, even when it
- * added no line, since the first step only shows the estimates. Starting the
- * forecast over forgets both and opens it again, as the first time.
+ * no line at all and has not answered it in this space, and on demand from
+ * the plan's link, the empty state or the "yearly payments" shortcut.
+ * Closing it without saving, while it is still unanswered, counts as
+ * skipping it. Starting the forecast over forgets that it was skipped and
+ * opens it again, as the first time.
  *
  * `prompt` is the page's prompt as the rest of the page reads it: a review
- * answered in this browser counts as having lines.
+ * answered counts as having lines, since its first step may add none.
  */
-function useReview(prompt: ForecastReviewPrompt, canReview: boolean) {
+function useReview(reviewPrompt: ForecastReviewPrompt, canReview: boolean) {
     const userId = usePage<{ auth?: { user?: { id?: string } } }>().props.auth
         ?.user?.id;
     const [open, setOpen] = useState(false);
     const [step, setStep] = useState<ForecastReviewStep>(1);
-    const [done, setDone] = useState(false);
     const checkedArrival = useRef(false);
+    const settled = reviewPrompt.hasLines || reviewPrompt.reviewed;
 
     useEffect(() => {
         if (checkedArrival.current) {
@@ -142,38 +134,30 @@ function useReview(prompt: ForecastReviewPrompt, canReview: boolean) {
         }
 
         checkedArrival.current = true;
-        const closed = reviewClosed(userId);
 
-        if (closed === 'done') {
-            setDone(true);
-        } else if (canReview && !prompt.hasLines && closed === null) {
+        if (canReview && !settled && !reviewWasSkipped(userId)) {
             setOpen(true);
         }
-    }, [canReview, prompt.hasLines, userId]);
+    }, [canReview, settled, userId]);
 
     return {
         open,
         step,
-        prompt: { ...prompt, hasLines: prompt.hasLines || done },
+        prompt: { ...reviewPrompt, hasLines: settled },
         openAt: (at: ForecastReviewStep) => {
             setStep(at);
             setOpen(true);
         },
         onOpenChange: (next: boolean) => {
-            if (!next && !prompt.hasLines && !done) {
-                rememberReviewClosed(userId, 'skipped');
+            if (!next && !settled) {
+                rememberReviewSkipped(userId);
             }
 
             setOpen(next);
         },
-        onSaved: () => {
-            rememberReviewClosed(userId, 'done');
-            setDone(true);
-            setOpen(false);
-        },
+        onSaved: () => setOpen(false),
         onStartedOver: () => {
-            forgetReviewClosed(userId);
-            setDone(false);
+            forgetReviewSkipped(userId);
             setStep(1);
             setOpen(true);
         },

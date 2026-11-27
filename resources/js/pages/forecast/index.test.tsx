@@ -79,7 +79,7 @@ vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en' }));
 function renderPage(
     data: ForecastData | ForecastAllData,
     projectionInput: ProjectionInput | null = null,
-    reviewPrompt: ForecastReviewPrompt = { hasLines: true },
+    reviewPrompt: ForecastReviewPrompt = { hasLines: true, reviewed: false },
     newSuggestionCount: number | undefined = 0,
 ) {
     return render(
@@ -124,7 +124,7 @@ describe('the forecast page with no account in it', () => {
                     ],
                 }}
                 projectionInput={null}
-                reviewPrompt={{ hasLines: false }}
+                reviewPrompt={{ hasLines: false, reviewed: false }}
             />,
         );
 
@@ -987,7 +987,7 @@ describe('the review on the forecast page', () => {
     });
 
     it('opens on its own for a user with no line yet, and asks for it', () => {
-        renderPage(forecast(), null, { hasLines: false }, 3);
+        renderPage(forecast(), null, { hasLines: false, reviewed: false }, 3);
 
         expect(
             document.querySelector('[data-test="forecast-review"]'),
@@ -999,9 +999,7 @@ describe('the review on the forecast page', () => {
     });
 
     it('neither opens nor asks for it again once it was answered', () => {
-        window.localStorage.setItem('forecast-review-skipped:guest', 'done');
-
-        renderPage(forecast(), null, { hasLines: false }, 2);
+        renderPage(forecast(), null, { hasLines: false, reviewed: true }, 2);
 
         expect(
             document.querySelector('[data-test="forecast-review"]'),
@@ -1017,7 +1015,7 @@ describe('the review on the forecast page', () => {
     it('does not open on its own again once skipped', () => {
         window.localStorage.setItem('forecast-review-skipped:guest', '1');
 
-        renderPage(forecast(), null, { hasLines: false }, 3);
+        renderPage(forecast(), null, { hasLines: false, reviewed: false }, 3);
 
         expect(
             document.querySelector('[data-test="forecast-review"]'),
@@ -1032,7 +1030,7 @@ describe('the review on the forecast page', () => {
     });
 
     it('links the new suggestions from the plan once there are lines', () => {
-        renderPage(forecast(), null, { hasLines: true }, 2);
+        renderPage(forecast(), null, { hasLines: true, reviewed: false }, 2);
 
         expect(
             document.querySelector('[data-test="forecast-review"]'),
@@ -1053,7 +1051,7 @@ describe('the review on the forecast page', () => {
     });
 
     it('remembers the review was skipped when closed without saving', () => {
-        renderPage(forecast(), null, { hasLines: false }, 3);
+        renderPage(forecast(), null, { hasLines: false, reviewed: false }, 3);
 
         fireEvent.keyDown(document.activeElement ?? document.body, {
             key: 'Escape',
@@ -1067,7 +1065,7 @@ describe('the review on the forecast page', () => {
     it('starts the forecast over after asking, and opens the review again', async () => {
         window.localStorage.setItem('forecast-review-skipped:guest', '1');
         post.mockClear();
-        renderPage(forecast(), null, { hasLines: true }, 0);
+        renderPage(forecast(), null, { hasLines: true, reviewed: false }, 0);
 
         fireEvent.pointerDown(screen.getByLabelText('More options'), {
             button: 0,
@@ -1110,7 +1108,7 @@ describe('the review on the forecast page', () => {
     });
 
     it('has no link when nothing new was found', () => {
-        renderPage(forecast(), null, { hasLines: true }, 0);
+        renderPage(forecast(), null, { hasLines: true, reviewed: false }, 0);
 
         expect(
             document.querySelector('[data-test="forecast-review-link"]'),
@@ -1167,7 +1165,7 @@ describe('the "All accounts" view', () => {
     });
 
     it('links the new suggestions to the review over the plan', () => {
-        renderPage(all(), null, { hasLines: true }, 2);
+        renderPage(all(), null, { hasLines: true, reviewed: false }, 2);
 
         const link = document.querySelector(
             '[data-test="forecast-review-link"]',

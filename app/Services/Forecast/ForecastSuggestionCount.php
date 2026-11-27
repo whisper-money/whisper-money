@@ -42,6 +42,7 @@ class ForecastSuggestionCount
 
     private function key(User $user, string $spaceId): string
     {
-        return "forecast:new-suggestions:{$user->id}:{$spaceId}";
+        // "yearly": counts cached before the review dropped its recurring step counted those too.
+        return "forecast:new-yearly-suggestions:{$user->id}:{$spaceId}";
     }
 }

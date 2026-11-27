@@ -10,8 +10,6 @@ import { TriangleAlert } from 'lucide-react';
 
 interface UncategorizedNoticeProps {
     uncategorized: ForecastReviewUncategorized;
-    /** The accounts counted, so the list shows only their transactions. */
-    accountIds: string[];
     onSkip: () => void;
     onContinue: () => void;
 }
@@ -24,7 +22,6 @@ interface UncategorizedNoticeProps {
  */
 export function ForecastReviewUncategorized({
     uncategorized,
-    accountIds,
     onSkip,
     onContinue,
 }: UncategorizedNoticeProps) {
@@ -65,11 +62,11 @@ export function ForecastReviewUncategorized({
                 <AlertTitle>
                     {uncategorized.count === 1
                         ? __(
-                              'You have 1 uncategorized transaction (:amount/month).',
+                              'You have 1 uncategorized transaction in the last 3 months (:amount/month).',
                               { amount: monthly },
                           )
                         : __(
-                              'You have :count uncategorized transactions (:amount/month).',
+                              'You have :count uncategorized transactions in the last 3 months (:amount/month).',
                               { count: uncategorized.count, amount: monthly },
                           )}
                 </AlertTitle>
@@ -82,7 +79,7 @@ export function ForecastReviewUncategorized({
                                     from: uncategorized.from,
                                     to: uncategorized.to,
                                 },
-                                accountIds,
+                                accountIds: uncategorized.accountIds,
                             })}
                             data-test="forecast-review-categorize"
                         >

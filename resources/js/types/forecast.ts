@@ -292,6 +292,8 @@ export interface ForecastReviewUncategorized {
     currencyCode: string;
     from: string;
     to: string;
+    /** The accounts counted, so the list shows only theirs. */
+    accountIds: string[];
 }
 
 export interface ForecastReview {
@@ -306,8 +308,10 @@ export interface ForecastReview {
 }
 
 export interface ForecastReviewPrompt {
-    /** Whether the space has any forecast line: without one the review opens on its own. */
+    /** Whether the space has any forecast line. */
     hasLines: boolean;
+    /** Whether the user answered the review in this space. With neither, the review opens on its own. */
+    reviewed: boolean;
 }
 
 /*

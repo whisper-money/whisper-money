@@ -37,7 +37,7 @@ class ForecastReviewPresenter
         $today = $user->localToday()->toDateString();
         $accounts = $this->accounts->included($user, $spaceId)->keyBy('id');
         $accountId = $accounts->has((string) $accountId) ? $accountId : null;
-        $reviewed = $accountId === null ? $accounts->modelKeys() : [$accountId];
+        $reviewed = $accountId === null ? array_values($accounts->modelKeys()) : [$accountId];
 
         return [
             'accountId' => $accountId,

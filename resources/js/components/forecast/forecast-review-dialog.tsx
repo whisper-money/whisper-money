@@ -131,7 +131,7 @@ function ReviewFlow({
     onSaved: () => void;
 }) {
     const [step, setStep] = useState<ForecastReviewStep>(initialStep);
-    // Read once, before the first step: going back from step 2 skips it.
+    // Shown once, before the first step, and not again once past it.
     const [noticeSeen, setNoticeSeen] = useState(initialStep !== 1);
     const [addedAnnual, setAddedAnnual] = useState<Set<string>>(new Set());
     const [manual, setManual] = useState<ManualPaymentDraft[]>([]);
@@ -179,11 +179,6 @@ function ReviewFlow({
         return (
             <ForecastReviewUncategorized
                 uncategorized={review.uncategorized}
-                accountIds={
-                    review.accountId
-                        ? [review.accountId]
-                        : review.accounts.map((account) => account.id)
-                }
                 onSkip={onSkip}
                 onContinue={() => setNoticeSeen(true)}
             />
@@ -198,7 +193,10 @@ function ReviewFlow({
                     review.accountId === null && review.accounts.length > 1
                 }
                 onSkip={onSkip}
-                onNext={() => setStep(2)}
+                onNext={() => {
+                    setNoticeSeen(true);
+                    setStep(2);
+                }}
             />
         );
     }
@@ -217,10 +215,7 @@ function ReviewFlow({
             error={error}
             isPro={isPro}
             onReload={() => router.reload({ only: ['review'] })}
-            onBack={() => {
-                setNoticeSeen(true);
-                setStep(1);
-            }}
+            onBack={() => setStep(1)}
             onFinish={finish}
         />
     );

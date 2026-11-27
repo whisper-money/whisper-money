@@ -13,6 +13,8 @@ use App\Models\ExchangeRate;
 use App\Models\ForecastDismissal;
 use App\Models\ForecastEstimateAdjustment;
 use App\Models\ForecastItem;
+use App\Models\ForecastReviewCompletion;
+use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Forecast\ForecastPlanBuilder;
@@ -109,7 +111,8 @@ describe('with the Forecast flag off', function () {
             ->assertNotFound();
 
         expect(ForecastItem::query()->count())->toBe(0)
-            ->and(ForecastDismissal::query()->count())->toBe(0);
+            ->and(ForecastDismissal::query()->count())->toBe(0)
+            ->and(ForecastReviewCompletion::query()->count())->toBe(0);
     });
 
     it('does not take an edit of step 1', function () {
@@ -126,7 +129,7 @@ describe('with the Forecast flag off', function () {
 
         $this->artisan('forecast:refresh')->assertSuccessful();
 
-        expect(Cache::has("forecast:new-suggestions:{$this->user->id}:{$this->spaceId}"))->toBeFalse();
+        expect(Cache::has("forecast:new-yearly-suggestions:{$this->user->id}:{$this->spaceId}"))->toBeFalse();
     });
 });
 
@@ -267,6 +270,14 @@ describe('step 1: how next month is estimated', function () {
             ->and($review['estimates']['totals']['income'])->toBe(260000);
     });
 
+    it('keeps a category the user set to zero, so it can be changed back', function () {
+        $this->actingAs($this->user)->from(route('forecast.index'))->post(route('forecast.estimates.store'), [
+            'account_id' => $this->checking->id, 'category_id' => $this->leisure->id, 'month' => '2026-12', 'amount' => 0, 'scope' => 'from_here',
+        ])->assertSessionHasNoErrors();
+
+        expect(reviewRows(reviewData($this->user), 'expenses'))->toBe([['Housing', 85000, 'median'], ['Leisure', 0, 'adjustment']]);
+    });
+
     it('shows a user without Pro next month too', function () {
         $free = User::factory()->onboarded()->paywallSeen()->create(['currency_code' => 'EUR']);
         Feature::for($free)->activate(Forecast::class);
@@ -314,6 +325,7 @@ describe('the uncategorized notice', function () {
             'currencyCode' => 'EUR',
             'from' => '2026-08-01',
             'to' => '2026-10-31',
+            'accountIds' => [$this->soloAccount->id],
         ]);
     });
 
@@ -374,6 +386,32 @@ describe('the uncategorized notice', function () {
 });
 
 describe('confirming', function () {
+    it('marks the review answered in the space, even with no line, until the user starts over', function () {
+        $page = fn () => $this->actingAs($this->user)->get(route('forecast.index'));
+
+        $page()->assertInertia(fn (AssertableInertia $page) => $page->where('reviewPrompt', ['hasLines' => false, 'reviewed' => false]));
+
+        postReview($this->user, [])->assertSessionHasNoErrors();
+
+        $page()->assertInertia(fn (AssertableInertia $page) => $page->where('reviewPrompt', ['hasLines' => false, 'reviewed' => true]));
+        expect(ForecastReviewCompletion::query()->sole())
+            ->user_id->toBe($this->user->id)
+            ->space_id->toBe($this->spaceId);
+
+        $this->actingAs($this->user)->post(route('forecast.start-over'))->assertSessionHasNoErrors();
+
+        expect(ForecastReviewCompletion::query()->count())->toBe(0);
+        $page()->assertInertia(fn (AssertableInertia $page) => $page->where('reviewPrompt.reviewed', false));
+    });
+
+    it('marks it answered only in the space it was answered in', function () {
+        postReview($this->user, [])->assertSessionHasNoErrors();
+        $other = Space::factory()->create();
+
+        expect(ForecastReviewCompletion::query()->where('user_id', $this->user->id)->forSpace($other->id)->exists())->toBeFalse()
+            ->and(ForecastReviewCompletion::query()->where('user_id', $this->user->id)->forSpace($this->spaceId)->exists())->toBeTrue();
+    });
+
     it('no longer creates a line for what repeats every month', function () {
         postReview($this->user, [])
             ->assertRedirect(route('forecast.index'))
@@ -513,6 +551,6 @@ describe('the count of new suggestions', function () {
         $this->travelTo('2026-11-30 06:10:00');
         $this->artisan('forecast:refresh')->assertSuccessful();
 
-        expect(Cache::get("forecast:new-suggestions:{$this->user->id}:{$this->spaceId}"))->toBe(0);
+        expect(Cache::get("forecast:new-yearly-suggestions:{$this->user->id}:{$this->spaceId}"))->toBe(0);
     });
 });

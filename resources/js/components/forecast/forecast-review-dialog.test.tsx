@@ -186,6 +186,7 @@ describe('the uncategorized notice', () => {
             currencyCode: 'EUR',
             from: '2026-08-01',
             to: '2026-10-31',
+            accountIds: ['checking'],
         },
     };
 
@@ -194,7 +195,7 @@ describe('the uncategorized notice', () => {
 
         expect(
             screen.getByText(
-                'You have 14 uncategorized transactions (€320/month).',
+                'You have 14 uncategorized transactions in the last 3 months (€320/month).',
             ),
         ).toBeInTheDocument();
         expect(
@@ -213,7 +214,16 @@ describe('the uncategorized notice', () => {
     });
 
     it('filters to every account reviewed in the "All accounts" view', () => {
-        renderDialog({ review: { ...withNotice, accountId: null } });
+        renderDialog({
+            review: {
+                ...withNotice,
+                accountId: null,
+                uncategorized: {
+                    ...withNotice.uncategorized!,
+                    accountIds: ['checking', 'savings'],
+                },
+            },
+        });
 
         const link = screen.getByRole('link', { name: 'Categorize them' });
         expect(

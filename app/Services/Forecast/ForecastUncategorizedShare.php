@@ -20,10 +20,9 @@ class ForecastUncategorizedShare
     private const MONTHS = 3;
 
     /**
-     * The share of uncategorized money above which the review warns, as a
-     * fraction: 1 / 5 is 20 %.
+     * The share of uncategorized money, in percent, above which the review warns.
      */
-    private const THRESHOLD_DENOMINATOR = 5;
+    private const THRESHOLD_PERCENT = 20;
 
     public function __construct(
         private readonly ForecastHistory $history,
@@ -35,7 +34,7 @@ class ForecastUncategorizedShare
      * Null when the share is 20 % or less.
      *
      * @param  list<string>  $accountIds  The accounts reviewed.
-     * @return array{count: int, monthlyAmount: int, currencyCode: string, from: string, to: string}|null
+     * @return array{count: int, monthlyAmount: int, currencyCode: string, from: string, to: string, accountIds: list<string>}|null
      */
     public function for(User $user, string $spaceId, array $accountIds, string $today): ?array
     {
@@ -70,7 +69,7 @@ class ForecastUncategorizedShare
 
         ['moved' => $moved, 'uncategorized' => $uncategorized, 'count' => $count] = $this->inUserCurrency($user, $byCurrency, $today);
 
-        if ($uncategorized * self::THRESHOLD_DENOMINATOR <= $moved) {
+        if ($uncategorized * 100 <= $moved * self::THRESHOLD_PERCENT) {
             return null;
         }
 
@@ -80,6 +79,7 @@ class ForecastUncategorizedShare
             'currencyCode' => (string) $user->currency_code,
             'from' => $from,
             'to' => $to,
+            'accountIds' => $accountIds,
         ];
     }
 
