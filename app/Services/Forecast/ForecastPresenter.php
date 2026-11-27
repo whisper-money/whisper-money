@@ -161,7 +161,7 @@ class ForecastPresenter
             ...$this->endAndLowest($months),
             'levels' => $levels->all(),
             'alert' => $context->alerts[$account->id],
-            'causes' => $levels->reject(fn (string $level): bool => $level === 'ok')->map(fn (string $level, string $month): array => $this->causes($context->plan, $account->id, $month))->all(),
+            'causes' => $levels->reject(fn (string $level): bool => $level === 'ok')->map(fn (string $level, string $month): array => $this->causes->for($context->plan, $account->id, $month))->all(),
             'lockedAlertCount' => $context->user->hasProPlan() ? null : $this->alerts->strongCount($context->lockedMonths($account->id), $threshold),
         ];
     }
