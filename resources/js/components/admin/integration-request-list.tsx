@@ -1,5 +1,4 @@
 import { update } from '@/actions/App/Http/Controllers/Admin/IntegrationRequestController';
-import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
 import { SettingsTable } from '@/components/shared/settings-table';
 import { Badge, type badgeVariants } from '@/components/ui/badge';
@@ -50,6 +49,8 @@ export type AdminIntegrationRequest = {
     status: IntegrationRequestStatus;
     comment: string | null;
     votes_count: number;
+    /** Distinct users who voted: one user may vote more than once. */
+    voters_count: number;
     submitted_by: string | null;
     created_at: string | null;
 };
@@ -280,6 +281,16 @@ const columns: ColumnDef<AdminIntegrationRequest>[] = [
         ),
     },
     {
+        id: 'voters_count',
+        header: () => __('Unique voters'),
+        meta: { cellClassName: WIDE_ONLY },
+        cell: ({ row }) => (
+            <span className="text-sm tabular-nums">
+                {row.original.voters_count}
+            </span>
+        ),
+    },
+    {
         id: 'created_at',
         header: () => __('Submitted'),
         meta: { cellClassName: WIDE_ONLY },
@@ -325,20 +336,18 @@ const columns: ColumnDef<AdminIntegrationRequest>[] = [
 type Filter = IntegrationRequestStatus | 'all';
 
 /**
- * The web form of `integration-requests:review`: every request on the
- * community board, the pending ones first, each one a click from approved.
+ * The web form of `integration-requests:review`: the requests in the order
+ * the server sent them, each one a click from approved. With `filterable`,
+ * a status filter sits above the table, starting on every status.
  */
 export function IntegrationRequestList({
     requests,
+    filterable = false,
 }: {
     requests: AdminIntegrationRequest[];
+    filterable?: boolean;
 }) {
-    const pendingCount = requests.filter(
-        (request) => request.status === 'pending',
-    ).length;
-    const [filter, setFilter] = useState<Filter>(
-        pendingCount > 0 ? 'pending' : 'all',
-    );
+    const [filter, setFilter] = useState<Filter>('all');
     // Memoised: a fresh array on every render makes the table re-render forever.
     const visible = useMemo(
         () =>
@@ -356,14 +365,8 @@ export function IntegrationRequestList({
     });
 
     return (
-        <section className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <HeadingSmall
-                    title={__('Integration requests')}
-                    description={__('Pending review: :count', {
-                        count: pendingCount,
-                    })}
-                />
+        <div className="space-y-4">
+            {filterable && (
                 <Select
                     value={filter}
                     onValueChange={(value) => setFilter(value as Filter)}
@@ -383,7 +386,7 @@ export function IntegrationRequestList({
                         ))}
                     </SelectContent>
                 </Select>
-            </div>
+            )}
 
             <SettingsTable
                 table={table}
@@ -393,6 +396,6 @@ export function IntegrationRequestList({
                         : __('No requests with this status.')
                 }
             />
-        </section>
+        </div>
     );
 }

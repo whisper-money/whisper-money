@@ -1,3 +1,4 @@
+import { index as integrationRequestsIndex } from '@/actions/App/Http/Controllers/Admin/IntegrationRequestController';
 import { index as usersIndex } from '@/actions/App/Http/Controllers/Admin/UserController';
 import { index, run } from '@/actions/App/Http/Controllers/AdminController';
 import {
@@ -233,30 +234,61 @@ function CommandRunner({
     );
 }
 
+/** A section's heading with a "See all" link to its own page. */
+function SectionHeading({
+    title,
+    description,
+    href,
+}: {
+    title: string;
+    description: string;
+    href: string;
+}) {
+    return (
+        <div className="flex items-center justify-between gap-4">
+            <HeadingSmall title={title} description={description} />
+            <Button variant="outline" size="sm" className="h-11 sm:h-8" asChild>
+                <Link href={href}>
+                    {__('See all')}
+                    <ArrowRight />
+                </Link>
+            </Button>
+        </div>
+    );
+}
+
 function LatestUsers({ users, total }: { users: AdminUser[]; total: number }) {
     return (
         <section className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
-                <HeadingSmall
-                    title={__('Latest sign-ups')}
-                    description={__(':count users in total.', {
-                        count: total.toLocaleString(),
-                    })}
-                />
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-11 sm:h-8"
-                    asChild
-                >
-                    <Link href={usersIndex().url}>
-                        {__('See all')}
-                        <ArrowRight />
-                    </Link>
-                </Button>
-            </div>
+            <SectionHeading
+                title={__('Latest sign-ups')}
+                description={__(':count users in total.', {
+                    count: total.toLocaleString(),
+                })}
+                href={usersIndex().url}
+            />
 
             <AdminUserTable users={users} />
+        </section>
+    );
+}
+
+function PendingIntegrationRequests({
+    requests,
+}: {
+    requests: AdminIntegrationRequest[];
+}) {
+    return (
+        <section className="space-y-4">
+            <SectionHeading
+                title={__('Integration requests')}
+                description={__('Pending review: :count', {
+                    count: requests.length,
+                })}
+                href={integrationRequestsIndex().url}
+            />
+
+            <IntegrationRequestList requests={requests} />
         </section>
     );
 }
@@ -288,9 +320,11 @@ export default function Admin({
 
                 <div className="space-y-8">
                     <CommandRunner commands={commands} result={result} />
-                    <IntegrationRequestList requests={integrationRequests} />
                     <SignupChart points={signupChart} />
                     <LatestUsers users={latestUsers} total={userCount} />
+                    <PendingIntegrationRequests
+                        requests={integrationRequests}
+                    />
                 </div>
             </div>
         </AppLayout>

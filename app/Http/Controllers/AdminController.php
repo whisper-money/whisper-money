@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Enums\IntegrationRequestStatus;
 use App\Http\Requests\RunAdminCommandRequest;
-use App\Models\IntegrationRequest;
 use App\Models\User;
 use App\Services\Admin\SignupChart;
+use App\Support\Admin\AdminIntegrationRequestRow;
 use App\Support\Admin\AdminUserRow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Artisan;
@@ -97,37 +97,23 @@ class AdminController extends Controller
                 ->map(AdminUserRow::from(...))
                 ->all(),
             'userCount' => User::query()->count(),
-            'integrationRequests' => $this->integrationRequests(),
+            'integrationRequests' => $this->pendingIntegrationRequests(),
             'result' => session('commandResult'),
         ]);
     }
 
     /**
-     * Every integration request, the ones waiting for review first.
+     * The integration requests waiting for review, most voted first; the
+     * rest are on /admin/integration-requests.
      *
      * @return list<array<string, mixed>>
      */
-    private function integrationRequests(): array
+    private function pendingIntegrationRequests(): array
     {
-        return IntegrationRequest::query()
-            ->withCount('votes')
-            // Authors who deleted their account are soft-deleted, but their
-            // requests linger; load them trashed so each row still says who.
-            ->with(['user' => fn ($user) => $user->withTrashed()->select('id', 'email')])
-            ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [IntegrationRequestStatus::Pending->value])
-            ->orderByDesc('votes_count')
-            ->orderByDesc('created_at')
+        return AdminIntegrationRequestRow::query()
+            ->where('status', IntegrationRequestStatus::Pending)
             ->get()
-            ->map(fn (IntegrationRequest $request): array => [
-                'id' => $request->id,
-                'name' => $request->name,
-                'url' => $request->url,
-                'status' => $request->status->value,
-                'comment' => $request->comment,
-                'votes_count' => $request->votes_count,
-                'submitted_by' => $request->user?->email,
-                'created_at' => $request->created_at?->toIso8601String(),
-            ])
+            ->map(AdminIntegrationRequestRow::from(...))
             ->all();
     }
 
