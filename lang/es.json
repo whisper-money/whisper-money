@@ -4458,5 +4458,13 @@
     "forecasted": "previsto",
     ":count more planned": ":count previstos más",
     "Balance at the end of the month": "Saldo a fin de mes",
-    "See the next 12 months": "Ver los próximos 12 meses"
+    "See the next 12 months": "Ver los próximos 12 meses",
+    "1 concrete this month": "1 concreto este mes",
+    ":count concrete this month": ":count concretos este mes",
+    ":names · not spending": ":names · no es gasto",
+    "Closing balance and likely range · tap a month": "Saldo de cierre y rango probable · toca un mes",
+    "Bars: the lowest balance of the month. Red, below 0; amber, below :minimum.": "Barras: mínimo del mes. Rojo, por debajo de 0; ámbar, por debajo de :minimum.",
+    "Bars: the lowest balance of the month. Red, below 0.": "Barras: mínimo del mes. Rojo, por debajo de 0.",
+    "Nothing planned this month.": "No hay nada previsto este mes.",
+    "paid": "pagado"
 }

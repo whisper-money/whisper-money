@@ -3316,5 +3316,13 @@
     ":count more planned": ":count autres prévus",
     ":count more": ":count de plus",
     "Balance at the end of the month": "Solde en fin de mois",
-    "See the next 12 months": "Voir les 12 prochains mois"
+    "See the next 12 months": "Voir les 12 prochains mois",
+    "1 concrete this month": "1 concret ce mois-ci",
+    ":count concrete this month": ":count concrets ce mois-ci",
+    ":names · not spending": ":names · pas une dépense",
+    "Closing balance and likely range · tap a month": "Solde de clôture et fourchette probable · touchez un mois",
+    "Bars: the lowest balance of the month. Red, below 0; amber, below :minimum.": "Barres : solde le plus bas du mois. Rouge, sous 0 ; orange, sous :minimum.",
+    "Bars: the lowest balance of the month. Red, below 0.": "Barres : solde le plus bas du mois. Rouge, sous 0.",
+    "Nothing planned this month.": "Rien de prévu ce mois-ci.",
+    "paid": "payé"
 }

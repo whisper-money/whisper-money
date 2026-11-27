@@ -1,9 +1,18 @@
 import { type Features } from '@/types';
 import { describe, expect, it } from 'vitest';
-import { footerNavItems, getMainNavItems } from './menu-item-provider';
+import {
+    footerNavItems,
+    getMainNavItems,
+    getMobileNavItems,
+} from './menu-item-provider';
 
 const features = (overrides: Partial<Features> = {}) =>
     ({ cashflow: true, forecast: false, ...overrides }) as Features;
+
+const mobileBar = (flags: Partial<Features>, locale: string) =>
+    getMobileNavItems(getMainNavItems(features(flags), locale)).map(
+        (item) => item.mobileTitle,
+    );
 
 describe('menu item provider', () => {
     it('does not include community in sidebar footer nav items', () => {
@@ -24,7 +33,24 @@ describe('menu item provider', () => {
         ]);
     });
 
-    it('puts Forecast after Cashflow with the flag on, kept out of the mobile bar', () => {
+    it('keeps the mobile bar as it was with the flag off, Accounts included', () => {
+        expect(mobileBar({}, 'es')).toEqual([
+            'Inicio',
+            'Cashflow',
+            'Cuentas',
+            'Movim.',
+            'Plan',
+        ]);
+        expect(mobileBar({}, 'en')).toEqual([
+            'Home',
+            'Cashflow',
+            'Accounts',
+            'Movements',
+            'Plan',
+        ]);
+    });
+
+    it('puts Forecast after Cashflow with the flag on, in both the sidebar and the mobile bar', () => {
         const items = getMainNavItems(features({ forecast: true }), 'es');
 
         expect(items.map((item) => item.title)).toEqual([
@@ -35,13 +61,22 @@ describe('menu item provider', () => {
             'Transactions',
             'Planning',
         ]);
-        expect(items.find((item) => item.title === 'Forecast')?.mobile).toBe(
-            false,
-        );
-        expect(
-            items
-                .filter((item) => item.mobile !== false)
-                .map((item) => item.mobileTitle),
-        ).toEqual(['Inicio', 'Cashflow', 'Cuentas', 'Movim.', 'Plan']);
+    });
+
+    it('swaps Accounts for Forecast in the mobile bar with the flag on', () => {
+        expect(mobileBar({ forecast: true }, 'es')).toEqual([
+            'Inicio',
+            'Cashflow',
+            'Previsión',
+            'Movim.',
+            'Plan',
+        ]);
+        expect(mobileBar({ forecast: true }, 'en')).toEqual([
+            'Home',
+            'Cashflow',
+            'Forecast',
+            'Movements',
+            'Plan',
+        ]);
     });
 });

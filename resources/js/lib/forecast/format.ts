@@ -92,13 +92,29 @@ export function isShort(balance: number, threshold: number | null): boolean {
  * minimum.
  */
 export function balanceTone(balance: number, threshold: number | null): string {
-    if (!isShort(balance, threshold)) {
+    const severity = balanceSeverity(balance, threshold);
+
+    if (severity === 'ok') {
         return '';
     }
 
-    return balance < Math.min(threshold as number, 0)
-        ? 'text-destructive'
-        : 'text-warning';
+    return severity === 'critical' ? 'text-destructive' : 'text-warning';
+}
+
+/**
+ * How far a balance falls against the account's alert threshold: below zero
+ * (or below the threshold, when that is lower) is critical, below the wanted
+ * minimum a warning.
+ */
+export function balanceSeverity(
+    balance: number,
+    threshold: number | null,
+): 'ok' | 'warning' | 'critical' {
+    if (!isShort(balance, threshold)) {
+        return 'ok';
+    }
+
+    return balance < Math.min(threshold as number, 0) ? 'critical' : 'warning';
 }
 
 /** "A, B and C", in the reader's language. */

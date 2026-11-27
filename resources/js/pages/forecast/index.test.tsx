@@ -1,23 +1,28 @@
 import { accountMonths, withLine } from '@/lib/forecast/edits';
-import {
-    type ProjectedMonth,
-    type ProjectionInput,
-} from '@/lib/forecast/types';
+import { type ProjectionInput } from '@/lib/forecast/types';
 import {
     type ForecastAllData,
     type ForecastData,
-    type ForecastGroup,
-    type ForecastLine,
     type ForecastReviewPrompt,
 } from '@/types/forecast';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+    allForecast,
+    allTotal,
+    forecast,
+    home,
+    line,
+    MONTHS,
+    projected,
+} from './forecast.fixture';
 import ForecastPage from './index';
 
-const { visit, reload } = vi.hoisted(() => ({
+const { visit, reload, viewport } = vi.hoisted(() => ({
     visit: vi.fn(),
     reload: vi.fn(),
+    viewport: { isMobile: false },
 }));
 
 vi.mock('@inertiajs/react', async () => ({
@@ -42,7 +47,9 @@ vi.mock('@inertiajs/react', async () => ({
     }),
 }));
 
-vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/use-mobile', () => ({
+    useIsMobile: () => viewport.isMobile,
+}));
 
 vi.mock('@/layouts/app/app-sidebar-layout', () => ({
     default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -67,184 +74,6 @@ vi.mock('@/hooks/use-format-amount', () => ({
 }));
 
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en' }));
-
-const MONTHS = [
-    '2026-11',
-    '2026-12',
-    '2027-01',
-    '2027-02',
-    '2027-03',
-    '2027-04',
-];
-
-function projected(month: string, min: number): ProjectedMonth {
-    return {
-        month,
-        min,
-        minDate: `${month}-10`,
-        close: min + 100000,
-        income: 300000,
-        expenses: 200000,
-        transfers: 0,
-        growth: 0,
-        estimated: 20000,
-        band: 8000,
-        pessimisticMin: min - 8000,
-    };
-}
-
-function line(overrides: Partial<ForecastLine>): ForecastLine {
-    return {
-        id: 'rent',
-        name: 'Rent',
-        kind: 'monthly',
-        source: 'detected',
-        anchorDate: '2026-01-05',
-        direction: null,
-        counterpartyName: null,
-        amounts: {},
-        current: {
-            planned: -190000,
-            real: -190000,
-            date: '2026-11-05',
-            status: 'matched',
-        },
-        accountId: 'checking',
-        categoryId: 'home',
-        definition: {
-            id: overrides.id ?? 'rent',
-            accountId: 'checking',
-            destinationAccountId: null,
-            frequency: 'monthly',
-            anchorDate: '2026-01-05',
-            endsOn: null,
-            versions: [{ effectiveFrom: '2026-01-05', amount: -190000 }],
-            overrides: [],
-        },
-        occurrenceDates: {},
-        matchText: null,
-        amountTolerance: 0,
-        dateWindowDays: 3,
-        payments: [],
-        drift: null,
-        ...overrides,
-    };
-}
-
-const home: ForecastGroup = {
-    key: 'home',
-    categoryId: 'home',
-    name: 'Home',
-    icon: null,
-    color: null,
-    items: [
-        line({
-            amounts: Object.fromEntries(MONTHS.map((m) => [m, -190000])),
-        }),
-        line({
-            id: 'insurance',
-            name: 'Car insurance',
-            kind: 'yearly',
-            source: 'manual',
-            anchorDate: '2026-04-10',
-            amounts: { '2027-04': -700000 },
-            current: { planned: null, real: null, date: null, status: 'none' },
-        }),
-    ],
-    estimate: {
-        basis: 'median',
-        budgetAmount: null,
-        amounts: Object.fromEntries(MONTHS.slice(1).map((m) => [m, -6000])),
-        current: { spent: 2000, planned: 6000, left: 4000 },
-    },
-};
-
-function forecast(overrides: Partial<ForecastData> = {}): ForecastData {
-    return {
-        scope: 'account',
-        today: '2026-11-26',
-        horizon: 6,
-        isPro: true,
-        currencyCode: 'EUR',
-        account: {
-            id: 'checking',
-            name: 'Checking',
-            type: 'checking',
-            currencyCode: 'EUR',
-            minimumBalance: null,
-            annualRateBps: null,
-            alertThreshold: 0,
-        },
-        accounts: [
-            {
-                id: 'checking',
-                name: 'Checking',
-                type: 'checking',
-                currencyCode: 'EUR',
-                hasAlert: true,
-            },
-            {
-                id: 'savings',
-                name: 'Savings',
-                type: 'savings',
-                currencyCode: 'EUR',
-                hasAlert: false,
-            },
-        ],
-        months: [
-            ...MONTHS.map((month, index) => ({
-                month,
-                status:
-                    index === 0 ? ('current' as const) : ('future' as const),
-            })),
-            { month: '2027-05', status: 'future' as const },
-        ],
-        projection: [...MONTHS, '2027-05'].map((month) =>
-            projected(month, month === '2027-04' ? -50000 : 110000),
-        ),
-        past: [
-            {
-                month: '2026-09',
-                income: 300000,
-                expenses: 190000,
-                close: 90000,
-                min: 80000,
-            },
-            {
-                month: '2026-10',
-                income: 300000,
-                expenses: 190000,
-                close: 100000,
-                min: 90000,
-            },
-            {
-                month: '2026-11',
-                income: 300000,
-                expenses: 192000,
-                close: 100000,
-                min: 95000,
-            },
-        ],
-        alert: {
-            level: 'strong',
-            month: '2027-04',
-            min: -50000,
-            minDate: '2027-04-10',
-            softMonths: [],
-            causes: [{ name: 'Car insurance', amount: 700000 }],
-            transfer: null,
-        },
-        lockedAlertCount: null,
-        kpis: {
-            balanceToday: 100000,
-            end: { month: '2027-05', close: 210000, band: 8000 },
-            lowest: { month: '2027-04', min: -50000, minDate: '2027-04-10' },
-            concreteShare: 90,
-        },
-        plan: { income: [], expenses: [home], transfers: [] },
-        ...overrides,
-    };
-}
 
 function renderPage(
     data: ForecastData | ForecastAllData,
@@ -645,6 +474,27 @@ describe('editing the forecast', () => {
         ).toMatchObject({ '2027-02': -190000, '2027-03': -200000 });
     });
 
+    it('opens a line tapped on the phone as a full-height bottom sheet', () => {
+        viewport.isMobile = true;
+
+        try {
+            renderPage(editable(), editingInput());
+
+            fireEvent.click(
+                document.querySelector(
+                    '[data-test="forecast-entry-line:insurance"]',
+                )!,
+            );
+
+            const edit = sheet('forecast-line-sheet');
+            expect(edit).toHaveTextContent('Car insurance · April 2027');
+            expect(edit.className).toContain('h-[calc(100dvh');
+            expect(edit.className).toContain('bottom-0');
+        } finally {
+            viewport.isMobile = false;
+        }
+    });
+
     it('stops forecasting a line', () => {
         visit.mockClear();
         renderPage(editable(), editingInput());
@@ -905,127 +755,8 @@ describe('the review on the forecast page', () => {
 });
 
 describe('the "All accounts" view', () => {
-    const savingsMonths = MONTHS.map((month) => projected(month, 800000));
-    const checkingMonths = MONTHS.map((month) =>
-        projected(month, month === '2027-04' ? -50000 : 110000),
-    );
-    const total = MONTHS.map((month, index) => ({
-        ...projected(month, 0),
-        close: checkingMonths[index].close + savingsMonths[index].close,
-        growth: index === 0 ? 0 : 9000,
-    }));
-
-    function all(overrides: Partial<ForecastAllData> = {}): ForecastAllData {
-        const base = forecast();
-
-        return {
-            scope: 'all',
-            today: base.today,
-            horizon: base.horizon,
-            isPro: true,
-            currencyCode: 'EUR',
-            account: null,
-            accounts: [
-                { ...base.accounts[0], hasAlert: true },
-                {
-                    id: 'savings',
-                    name: 'Savings',
-                    type: 'savings',
-                    currencyCode: 'EUR',
-                    hasAlert: false,
-                },
-            ],
-            months: base.months,
-            projection: total,
-            unconvertedCurrencies: [],
-            past: base.past,
-            accountForecasts: [
-                {
-                    ...base.account,
-                    minimumBalance: 30000,
-                    projection: checkingMonths,
-                },
-                {
-                    id: 'savings',
-                    name: 'Savings',
-                    type: 'savings',
-                    currencyCode: 'EUR',
-                    minimumBalance: null,
-                    annualRateBps: 1200,
-                    alertThreshold: 0,
-                    projection: savingsMonths,
-                },
-            ],
-            alert: {
-                level: 'split',
-                accountId: 'checking',
-                month: '2027-04',
-                min: -50000,
-                minDate: '2027-04-10',
-                softMonths: [],
-                transfer: {
-                    fromAccountId: 'savings',
-                    amount: 50000,
-                    date: '2027-04-01',
-                    month: '2027-04',
-                },
-            },
-            lockedAlertCount: null,
-            kpis: {
-                balanceToday: 1000000,
-                accountCount: 2,
-                end: { month: '2027-04', close: 2000000, band: 8000 },
-                saved: 500000,
-                growth: 45000,
-                moved: 250000,
-            },
-            plan: {
-                income: [],
-                expenses: [
-                    {
-                        ...home,
-                        items: [
-                            home.items[0],
-                            line({
-                                id: 'cleaning',
-                                name: 'Cleaning',
-                                accountId: 'savings',
-                                amounts: { '2026-12': -10000 },
-                            }),
-                        ],
-                        estimates: [
-                            { ...home.estimate!, accountId: 'savings' },
-                        ],
-                        totals: { '2026-12': -206000 },
-                        current: { real: -192000, pending: false },
-                    },
-                ],
-                transfers: [
-                    line({
-                        id: 'to-savings',
-                        name: 'To savings',
-                        kind: 'transfer',
-                        direction: 'in',
-                        counterpartyName: 'Checking',
-                        amounts: { '2026-12': 50000 },
-                        definition: {
-                            ...home.items[0].definition,
-                            id: 'to-savings',
-                            destinationAccountId: 'savings',
-                        },
-                        occurrenceDates: { '2026-12': '2026-12-02' },
-                    }),
-                ],
-                growth: Object.fromEntries(
-                    total.map((month) => [month.month, month.growth]),
-                ),
-                transferEffect: Object.fromEntries(
-                    MONTHS.map((month) => [month, 0]),
-                ),
-            },
-            ...overrides,
-        };
-    }
+    const total = allTotal;
+    const all = allForecast;
 
     function row(id: string): HTMLElement {
         return document.querySelector(
@@ -1237,5 +968,293 @@ describe('the "All accounts" view', () => {
         expect(
             document.querySelector('[data-test="forecast-all-alert-ok"]'),
         ).toBeNull();
+    });
+});
+
+describe('the forecast page on a phone', () => {
+    beforeEach(() => {
+        viewport.isMobile = true;
+    });
+
+    afterEach(() => {
+        viewport.isMobile = false;
+    });
+
+    function chip(month: string): HTMLElement {
+        return document.querySelector(
+            `[data-test="forecast-month-chip-${month}"]`,
+        ) as HTMLElement;
+    }
+
+    function monthCard(): HTMLElement {
+        return document.querySelector(
+            '[data-test="forecast-month-card"]',
+        ) as HTMLElement;
+    }
+
+    function group(id: string): HTMLElement {
+        return document.querySelector(
+            `[data-test="forecast-month-group-${id}"]`,
+        ) as HTMLElement;
+    }
+
+    it('shows one month at a time instead of the plan table', () => {
+        renderPage(forecast());
+
+        expect(
+            document.querySelector('[data-test="forecast-mobile"]'),
+        ).toBeInTheDocument();
+        expect(
+            document.querySelector('[data-test="forecast-plan"]'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Add to the forecast' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(/How you are going to be/),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText('Balance today')).toBeInTheDocument();
+        expect(
+            screen.getByText('likely between €2020 and €2180'),
+        ).toBeInTheDocument();
+    });
+
+    it('picks the problem month first, marks the months that run short and follows the chip or the chart', () => {
+        renderPage(forecast());
+
+        expect(chip('2027-04')).toHaveAttribute('aria-pressed', 'true');
+        expect(chip('2027-04')).toHaveTextContent('⚠');
+        expect(chip('2027-01')).not.toHaveTextContent('⚠');
+        expect(within(monthCard()).getByRole('heading')).toHaveTextContent(
+            'April 2027',
+        );
+        expect(monthCard()).toHaveTextContent('worst case €-580');
+
+        fireEvent.click(chip('2027-01'));
+        expect(chip('2027-01')).toHaveAttribute('aria-pressed', 'true');
+        expect(chip('2027-04')).toHaveAttribute('aria-pressed', 'false');
+        expect(within(monthCard()).getByRole('heading')).toHaveTextContent(
+            'January 2027',
+        );
+
+        fireEvent.click(
+            document.querySelector(
+                '[data-test="forecast-mobile-bar-2027-03"]',
+            )!,
+        );
+        expect(chip('2027-03')).toHaveAttribute('aria-pressed', 'true');
+        expect(
+            document.querySelector('[data-test="forecast-mobile-bar-2026-10"]'),
+        ).toBeDisabled();
+    });
+
+    it('opens a category into its concrete lines, its estimated rest and the add link', () => {
+        renderPage(forecast());
+
+        // April holds the yearly insurance that explains the dip: open.
+        expect(group('group:expenses:home')).toHaveTextContent(
+            '2 concrete this month + estimated',
+        );
+        expect(group('group:expenses:home')).toHaveTextContent('≈ -8960');
+        expect(
+            within(group('group:expenses:home')).getByText('Car insurance'),
+        ).toBeInTheDocument();
+
+        fireEvent.click(chip('2027-01'));
+        const home = group('group:expenses:home');
+        const toggle = within(home).getByRole('button', { name: /Home/ });
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(home).queryByText('Rent')).not.toBeInTheDocument();
+
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(within(home).getByText('Rent')).toBeInTheDocument();
+        expect(within(home).getByText('Estimated rest')).toBeInTheDocument();
+        expect(within(home).getByText('≈ -60')).toBeInTheDocument();
+        expect(
+            within(home).getByText('+ Add something concrete in Home'),
+        ).toBeInTheDocument();
+        expect(within(home).queryByText('Car insurance')).toBeNull();
+    });
+
+    it('says in the month in progress what was already paid, and leaves it closed to edits', () => {
+        renderPage(forecast({ months: forecast().months }));
+
+        fireEvent.click(chip('2026-11'));
+        const home = group('group:expenses:home');
+        fireEvent.click(within(home).getByRole('button', { name: /Home/ }));
+
+        const rent = home.querySelector<HTMLElement>(
+            '[data-test="forecast-entry-line:rent"]',
+        )!;
+        expect(rent).toHaveTextContent('paid');
+        expect(rent.tagName).toBe('DIV');
+        // What is left of the estimate: 60 planned, 20 spent.
+        expect(within(home).getByText('≈ -40')).toBeInTheDocument();
+    });
+
+    it('reaches the account’s wanted minimum from today’s balance', () => {
+        renderPage(forecast());
+
+        expect(
+            within(
+                document.querySelector<HTMLElement>(
+                    '[data-test="forecast-kpis"]',
+                )!,
+            ).getByText(/No wanted minimum/),
+        ).toBeInTheDocument();
+    });
+
+    it('lists the income and the transfers of the month as their own rows', () => {
+        const salary = line({
+            id: 'salary',
+            name: 'Salary',
+            categoryId: null,
+            amounts: { '2027-04': 300000 },
+            occurrenceDates: { '2027-04': '2027-04-28' },
+        });
+        const toSavings = line({
+            id: 'to-savings',
+            name: 'To savings',
+            kind: 'transfer',
+            direction: 'out',
+            counterpartyName: 'Savings',
+            amounts: { '2027-04': -50000 },
+        });
+        renderPage(
+            forecast({
+                plan: {
+                    income: [
+                        {
+                            ...home,
+                            key: 'work',
+                            name: 'Work',
+                            items: [salary],
+                            estimate: null,
+                        },
+                    ],
+                    expenses: [home],
+                    transfers: [toSavings],
+                },
+            }),
+        );
+
+        expect(group('income')).toHaveTextContent('Salary · day 28');
+        expect(group('income')).toHaveTextContent('+3000');
+        expect(group('transfers')).toHaveTextContent(
+            '→ Savings · not spending',
+        );
+        expect(group('transfers')).toHaveTextContent('-500');
+    });
+
+    it('moves to another account or horizon from the selects', () => {
+        visit.mockClear();
+        renderPage(forecast());
+
+        const account = screen.getByLabelText('Account');
+        expect(account).toHaveValue('checking');
+        expect(
+            within(account).getByRole('option', { name: 'Checking · ⚠' }),
+        ).toBeInTheDocument();
+        expect(
+            within(account).getByRole('option', { name: 'All accounts' }),
+        ).toBeInTheDocument();
+
+        fireEvent.change(account, { target: { value: 'savings' } });
+        expect(visit.mock.calls.at(-1)?.[0]).toBe(
+            '/forecast?account=savings&horizon=6',
+        );
+
+        fireEvent.change(screen.getByLabelText('Horizon'), {
+            target: { value: '12' },
+        });
+        expect(visit.mock.calls.at(-1)?.[0]).toBe(
+            '/forecast?account=checking&horizon=12',
+        );
+    });
+
+    it('stacks the strong warning over one full-width button', () => {
+        renderPage(forecast());
+
+        const alert = document.querySelector<HTMLElement>(
+            '[data-test="forecast-alert-strong"]',
+        )!;
+        expect(alert.className).toContain('flex-col');
+
+        fireEvent.click(chip('2027-01'));
+        fireEvent.click(
+            within(alert).getByRole('button', {
+                name: 'See April in the plan',
+            }),
+        );
+        expect(chip('2027-04')).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('locks the months the free plan hides and shows the upsell instead of their figures', () => {
+        renderPage(
+            forecast({
+                isPro: false,
+                lockedAlertCount: 1,
+                months: [
+                    { month: '2026-11', status: 'current' },
+                    { month: '2026-12', status: 'future' },
+                    ...MONTHS.slice(2).map((month) => ({
+                        month,
+                        status: 'locked' as const,
+                    })),
+                ],
+                projection: MONTHS.slice(0, 2).map((month) =>
+                    projected(month, 110000),
+                ),
+                alert: {
+                    level: 'ok',
+                    month: null,
+                    min: null,
+                    minDate: null,
+                    softMonths: [],
+                    causes: [],
+                    transfer: null,
+                },
+            }),
+        );
+
+        expect(chip('2026-12')).toHaveAttribute('aria-pressed', 'true');
+        expect(chip('2026-12')).not.toHaveAttribute('data-locked');
+        expect(chip('2027-02')).toHaveAttribute('data-locked', 'true');
+        expect(
+            within(chip('2027-02')).getByLabelText('Available with Pro'),
+        ).toBeInTheDocument();
+
+        fireEvent.click(chip('2027-02'));
+        expect(monthCard()).toBeNull();
+        const locked = document.querySelector<HTMLElement>(
+            '[data-test="forecast-month-locked"]',
+        )!;
+        expect(locked).toHaveTextContent('February 2027');
+        expect(locked).not.toHaveTextContent('Rent');
+
+        fireEvent.click(
+            within(locked).getByRole('button', {
+                name: 'Unlock 12 months with Pro',
+            }),
+        );
+        expect(
+            document.querySelector('[data-test="upgrade-dialog"]'),
+        ).toBeInTheDocument();
+    });
+
+    it('shows the "All accounts" month with each category summed in the user\'s currency', () => {
+        renderPage(allForecast());
+
+        expect(screen.getByLabelText('Account')).toHaveValue('all');
+
+        fireEvent.click(chip('2026-12'));
+        const home = group('group:expenses:home');
+        expect(home).toHaveTextContent('≈ -2060');
+
+        fireEvent.click(within(home).getByRole('button', { name: /Home/ }));
+        expect(within(home).getByText('Cleaning')).toBeInTheDocument();
+        expect(within(home).getAllByText('Savings')).toHaveLength(2);
+        expect(group('transfers')).toHaveTextContent('← Checking');
     });
 });

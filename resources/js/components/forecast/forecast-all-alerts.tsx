@@ -60,7 +60,7 @@ function AccountShortAlert({ forecast }: { forecast: ForecastAllData }) {
             <div className="flex items-start gap-3">
                 <TriangleAlertIcon className="mt-0.5 size-5 shrink-0" />
                 <div className="flex flex-col gap-1">
-                    <AlertTitle className="text-sm font-semibold">
+                    <AlertTitle className="line-clamp-none text-sm font-semibold">
                         {split
                             ? __(
                                   'Together you are doing fine, but the money is not where you need it',

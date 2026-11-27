@@ -17,6 +17,7 @@ import { cn, resolveUrl } from '@/lib/utils';
 import {
     footerNavItems,
     getMainNavItems,
+    getMobileNavItems,
 } from '@/providers/menu-item-provider';
 import { dashboard } from '@/routes';
 import { SharedData } from '@/types';
@@ -31,7 +32,7 @@ export function AppSidebar() {
         () => getMainNavItems(page.props.features, page.props.locale),
         [page.props.features, page.props.locale],
     );
-    const mobileNavItems = mainNavItems.filter((item) => item.mobile !== false);
+    const mobileNavItems = getMobileNavItems(mainNavItems);
     const { trigger } = useWebHaptics();
     const collapsed = useSidebar().state === 'collapsed';
 
