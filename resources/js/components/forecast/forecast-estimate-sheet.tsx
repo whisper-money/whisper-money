@@ -114,7 +114,11 @@ export function ForecastEstimateSheet({
             }
         >
             <Field
-                label={__('What you expect to spend')}
+                label={
+                    estimateKind(group) === 'income'
+                        ? __('What you expect to receive')
+                        : __('What you expect to spend')
+                }
                 htmlFor="forecast-estimate-amount"
                 hint={__('Now: :amount', {
                     amount: formatAmount(original, currencyCode, {

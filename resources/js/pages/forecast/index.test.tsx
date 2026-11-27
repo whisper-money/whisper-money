@@ -200,6 +200,44 @@ describe('the forecast page', () => {
         expect(screen.getByText('of 60 · 40 left')).toBeInTheDocument();
     });
 
+    it('shows what an income estimate already received this month as money in', () => {
+        renderPage(
+            forecast({
+                plan: {
+                    income: [
+                        {
+                            ...home,
+                            key: 'work',
+                            section: 'income',
+                            categoryId: 'work',
+                            name: 'Work',
+                            items: [],
+                            estimate: {
+                                ...home.estimate!,
+                                kind: 'income',
+                                amounts: { '2026-12': 300000 },
+                                current: {
+                                    spent: 100000,
+                                    planned: 300000,
+                                    left: 200000,
+                                },
+                            },
+                        },
+                    ],
+                    expenses: [home],
+                    transfers: [],
+                },
+            }),
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Work/ }));
+
+        const cell = screen.getByText('of 3000 · 2000 left').parentElement!;
+
+        expect(cell).toHaveTextContent('1000');
+        expect(cell).not.toHaveTextContent('-1000');
+    });
+
     it('tells a line still to come from one that is overdue', () => {
         const pending = (id: string, date: string) =>
             line({

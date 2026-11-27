@@ -3141,6 +3141,7 @@
     "We match it with payments within ±:days days and ±:percent% of the amount.": "On l’associe aux paiements à ±:days jours et ±:percent % du montant.",
     "We only match it with payments of «:name» within ±:days days and ±:percent% of the amount.": "On ne l’associe qu’aux paiements de « :name » à ±:days jours et ±:percent % du montant.",
     "We warn you when the forecast drops below it. Leave it empty to be warned below zero.": "On te prévient si la prévision passe en dessous. Laisse vide pour être prévenu en dessous de zéro.",
+    "What you expect to receive": "Ce que tu prévois de recevoir",
     "What you expect to spend": "Ce que tu prévois de dépenser",
     "Which months does it affect?": "Quels mois sont concernés ?",
     "Whisper Money does not move money. When you make the transfer at your bank, we will match it with this forecast alone.": "Whisper Money ne déplace pas d’argent. Quand tu feras le virement dans ta banque, on l’associera à cette seule prévision.",
