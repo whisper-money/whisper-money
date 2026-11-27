@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\Console\Output\BufferedOutput;
 
 const ADMIN_EMAIL = 'admin@whisper.test';
@@ -62,7 +63,7 @@ test('the page lists the ten newest users and how many there are', function () {
         );
 });
 
-test('the page carries 30 days of sign-ups and active users', function () {
+test('the page opens the chart on the month in progress', function () {
     $this->travelTo('2026-11-27 12:00:00');
     $admin = admin();
     User::factory()->count(2)->create(['created_at' => '2026-11-20 09:00:00']);
@@ -71,12 +72,55 @@ test('the page carries 30 days of sign-ups and active users', function () {
         ->get('/admin')
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->has('signupChart', 30)
-            ->where('signupChart.0.date', '2026-10-29')
-            ->where('signupChart.22', ['date' => '2026-11-20', 'signups' => 2, 'active_users' => 0])
+            ->where('signupChart.period_type', 'month')
+            ->where('signupChart.period', '2026-11')
+            ->has('signupChart.points', 30)
+            ->where('signupChart.points.19.start', '2026-11-20')
+            ->where('signupChart.points.19.signups', 2)
             // The admin's own request is today's activity.
-            ->where('signupChart.29', ['date' => '2026-11-27', 'signups' => 1, 'active_users' => 1])
+            ->where('signupChart.points.26.signups', 1)
+            ->where('signupChart.points.26.active_users', 1)
+            ->where('signupChart.points.27.signups', null)
         );
+});
+
+test('the chart follows the period in the query, and drops one that does not parse', function (array $query, string $type, string $period) {
+    $this->travelTo('2026-11-27 12:00:00');
+
+    $this->actingAs(admin())
+        ->get('/admin?'.http_build_query($query))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('signupChart.period_type', $type)
+            ->where('signupChart.period', $period)
+        );
+})->with([
+    'a past month' => [['period_type' => 'month', 'period' => '2026-03'], 'month', '2026-03'],
+    'a quarter' => [['period_type' => 'quarter', 'period' => '2026-Q2'], 'quarter', '2026-Q2'],
+    'a year' => [['period_type' => 'year', 'period' => '2025'], 'year', '2025'],
+    'a month that does not exist' => [['period_type' => 'month', 'period' => '2026-13'], 'month', '2026-11'],
+    'a period of the wrong type' => [['period_type' => 'quarter', 'period' => '2026-03'], 'quarter', '2026-Q4'],
+    'an unknown period type' => [['period_type' => 'week', 'period' => '2026-03'], 'month', '2026-03'],
+]);
+
+test('a partial reload of the chart computes nothing else', function () {
+    $admin = admin();
+    DB::enableQueryLog();
+
+    $this->actingAs($admin)
+        ->get('/admin?period_type=year&period=2025', [
+            'X-Inertia' => 'true',
+            'X-Inertia-Partial-Component' => 'admin/index',
+            'X-Inertia-Partial-Data' => 'signupChart',
+        ])
+        ->assertOk()
+        ->assertJsonPath('props.signupChart.period', '2025')
+        ->assertJsonMissingPath('props.latestUsers')
+        ->assertJsonMissingPath('props.integrationRequests');
+
+    $queries = collect(DB::getQueryLog())->pluck('query');
+
+    expect($queries->filter(fn (string $query): bool => str_contains($query, 'integration_requests')))->toBeEmpty();
 });
 
 test('a command that is not on the curated list is rejected', function () {
