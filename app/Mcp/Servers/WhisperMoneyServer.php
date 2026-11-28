@@ -237,8 +237,8 @@ app is kept in their books.
   revision. Clients that show MCP Apps draw a live preview of the widget under
   `create_widget`, `update_widget` and `get_widget`. Whatever the client,
   `render_widget` lets you see it yourself: it draws the widget with the user's
-  data at its dashboard cell's size (or another `width`/`height`, in `light`
-  or `dark`) and answers with its `html`, compacted, and `diagnostics` measured
+  data at its desktop dashboard cell's size (or another `width`/`height`, in
+  `light` or `dark`; phones are not drawn) and answers with its `html`, compacted, and `diagnostics` measured
   in the browser: text cut off, content the cell clips, charts with no size or
   no series, a cell left mostly empty. Call it after every save, fix what it
   finds with `update_widget`, and render again.

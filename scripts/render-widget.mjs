@@ -7,8 +7,11 @@
 // dashboard's grid gives it (resources/js/widgets/preview/render-mode.tsx).
 // The agent's TSX only ever runs inside this browser.
 //
-// Nothing leaves the machine: the payload carries the user's data, and every
-// http(s) request the page makes is refused.
+// Nothing leaves the machine: the payload carries the user's data. The browser
+// resolves no host name, opens no WebSocket and no non-proxied WebRTC socket,
+// runs no service worker, and every request that is not for the page's own
+// file is refused. (The widget validator already refuses network code; this
+// holds even if something slipped past it.)
 //
 // Usage:
 //   node scripts/render-widget.mjs <job.json>
@@ -50,17 +53,30 @@ function logged(type, text) {
     }
 }
 
-const browser = await launchChromium();
+/** Past the widget's own timeout, time to close the browser and answer. */
+const DEADLINE_MARGIN_MS = 5000;
+
+function answer(result) {
+    process.stdout.write(
+        JSON.stringify({ ...result, console: consoleMessages }),
+    );
+}
+
+const browser = await launchChromium([
+    '--host-resolver-rules=MAP * ~NOTFOUND',
+    '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
+]);
 
 // A widget stuck in a loop blocks the page, and page.evaluate() has no
-// timeout of its own: past the deadline, answer with what is known.
-const deadline = setTimeout(async () => {
+// timeout of its own: past the deadline, answer with what is known. Exits
+// once stdout is flushed, or PHP would read half an answer.
+const deadline = setTimeout(() => {
     process.stdout.write(
         JSON.stringify({ timed_out: true, console: consoleMessages }),
+        () => process.exit(0),
     );
-    await browser.close().catch(() => undefined);
-    process.exit(0);
-}, job.timeout_ms);
+    browser.close().catch(() => undefined);
+}, job.timeout_ms + DEADLINE_MARGIN_MS);
 
 try {
     const context = await browser.newContext({
@@ -72,9 +88,14 @@ try {
         colorScheme: job.theme,
         // Recharts skips its animations then, so the chart is drawn at once.
         reducedMotion: 'reduce',
+        serviceWorkers: 'block',
     });
 
-    await context.route(/^(https?|wss?):/, (route) => route.abort());
+    await context.route(
+        (url) => url.protocol !== 'file:',
+        (route) => route.abort(),
+    );
+    await context.routeWebSocket(/.*/, (socket) => socket.close());
 
     const page = await context.newPage();
 
@@ -138,18 +159,10 @@ try {
         job.max_html_length,
     );
 
-    process.stdout.write(
-        JSON.stringify({
-            ...inspection,
-            timed_out: false,
-            console: consoleMessages,
-        }),
-    );
+    answer({ ...inspection, timed_out: false });
 } catch (error) {
     if (error?.name === 'TimeoutError') {
-        process.stdout.write(
-            JSON.stringify({ timed_out: true, console: consoleMessages }),
-        );
+        answer({ timed_out: true });
     } else {
         throw error;
     }

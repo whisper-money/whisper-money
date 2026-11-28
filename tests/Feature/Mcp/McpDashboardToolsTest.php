@@ -24,6 +24,7 @@ use App\Models\WidgetDefinition;
 use App\Services\Widgets\WidgetCompiler;
 use App\Services\Widgets\WidgetDefinitionService;
 use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Process;
 use Laravel\Mcp\Server\Testing\TestResponse;
@@ -595,9 +596,46 @@ describe('render_widget', function () {
         fakeRenderBrowser($this, [], exitCode: 1, errorOutput: "browserType.launch: Executable doesn't exist");
 
         callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])
-            ->assertHasErrors(['The widget could not be drawn because of an error on our side. Try again in a moment.']);
+            ->assertHasErrors(['The widget could not be drawn because of an error on our side.']);
 
         Exceptions::assertReported(fn (RuntimeException $exception): bool => str_contains($exception->getMessage(), "Executable doesn't exist"));
+    });
+
+    it('tells the agent to wait while another render of the user holds the browser', function () {
+        $user = User::factory()->create();
+        $widget = savedMcpWidget($user);
+        fakeRenderBrowser($this, drawnWidgetOutput());
+        $held = Cache::lock("widget-render:user:{$user->id}", 60);
+        $held->get();
+
+        try {
+            callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])
+                ->assertHasErrors(['Another of this user\'s widgets is being drawn']);
+        } finally {
+            $held->release();
+        }
+
+        Process::assertNothingRan();
+    });
+
+    it('tells the agent to try again when every browser slot is taken', function () {
+        config(['widgets.renderer.concurrency' => 1]);
+        $user = User::factory()->create();
+        $widget = savedMcpWidget($user);
+        fakeRenderBrowser($this, drawnWidgetOutput());
+        $held = Cache::lock('widget-render:slot:1', 60);
+        $held->get();
+
+        try {
+            callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])
+                ->assertHasErrors(['Too many widgets are being drawn right now']);
+        } finally {
+            $held->release();
+        }
+
+        Process::assertNothingRan();
+        // The user's own lock went with the refusal: the next render runs.
+        callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])->assertOk();
     });
 
     it('reports a preview that was never built, without starting a browser', function () {

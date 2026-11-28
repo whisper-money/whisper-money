@@ -23,10 +23,11 @@ export async function launchChromium(extraArgs = []) {
     try {
         return await chromium.launch({ channel: 'chromium', args });
     } catch (error) {
-        try {
-            return await chromium.launch({ args });
-        } catch {
+        // Only a missing binary: a browser that crashed is not retried.
+        if (!String(error?.message).includes("Executable doesn't exist")) {
             throw error;
         }
+
+        return await chromium.launch({ args });
     }
 }

@@ -11,4 +11,12 @@ enum WidgetWidth: string
     case OneThird = '1/3';
     case Half = '1/2';
     case Full = '1/1';
+
+    /**
+     * @return list<string>
+     */
+    public static function values(): array
+    {
+        return array_column(self::cases(), 'value');
+    }
 }

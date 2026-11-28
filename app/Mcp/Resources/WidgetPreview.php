@@ -44,7 +44,8 @@ class WidgetPreview extends AppResource
     {
         $data = $this->viewData();
 
-        return $data['script'] === null ? null : view('mcp.widget-preview', $data)->render();
+        // Without its stylesheet the widget would be measured unstyled.
+        return $data['script'] === null || $data['style'] === null ? null : view('mcp.widget-preview', $data)->render();
     }
 
     /**

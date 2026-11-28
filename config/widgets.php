@@ -67,10 +67,16 @@ return [
     | the browser answers with what it has, so a widget stuck in a loop costs
     | the agent a timeout error rather than holding the request.
     |
+    | Each render is a Chromium process held by a web worker, so at most
+    | `concurrency` run at once on the server, and one per user; past that the
+    | agent is told to try again in a moment.
+    |
     */
 
     'renderer' => [
         'timeout' => (int) env('WIDGETS_RENDER_TIMEOUT', 20),
+
+        'concurrency' => (int) env('WIDGETS_RENDER_CONCURRENCY', 3),
     ],
 
 ];

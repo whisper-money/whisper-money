@@ -29,6 +29,8 @@ class RenderWidget extends McpTool
 {
     use GuardsCustomDashboards, PresentsWidgets;
 
+    private const array THEMES = ['light', 'dark'];
+
     /**
      * @return array<string, mixed>
      */
@@ -36,9 +38,9 @@ class RenderWidget extends McpTool
     {
         return [
             'widget_id' => $schema->string()->description('Id of the widget, from create_widget, update_widget or list_dashboards.')->required(),
-            'theme' => $schema->string()->enum(['light', 'dark'])->description('Color mode to draw it in. Defaults to light; check dark too.'),
-            'width' => $schema->string()->enum(array_column(WidgetWidth::cases(), 'value'))
-                ->description('Width of the cell to draw it in. Defaults to the manifest\'s size.width; pass another of its allowed_widths to check it there.'),
+            'theme' => $schema->string()->enum(self::THEMES)->description('Color mode to draw it in. Defaults to light; check dark too.'),
+            'width' => $schema->string()->enum(WidgetWidth::values())
+                ->description('Width of the desktop dashboard cell to draw it in (phones are not drawn). Defaults to the manifest\'s size.width; pass another of its allowed_widths to check it there.'),
             'height' => $schema->string()->enum(WidgetHeight::values())
                 ->description('Height of the cell. Defaults to the manifest\'s size.height.'),
         ];
@@ -49,7 +51,7 @@ class RenderWidget extends McpTool
         $widget = $this->widgetOfUser($request, $user);
 
         $validated = $request->validate([
-            'theme' => ['nullable', Rule::in(['light', 'dark'])],
+            'theme' => ['nullable', Rule::in(self::THEMES)],
             'width' => ['nullable', Rule::enum(WidgetWidth::class)],
             'height' => ['nullable', Rule::enum(WidgetHeight::class)],
         ]);
@@ -95,14 +97,18 @@ class RenderWidget extends McpTool
     private function next(bool $rendered, array $render): string
     {
         if ($render['data_failures'] !== []) {
-            return 'The dashboard shows an error instead of the widget: fix the data_failures in the manifest with update_widget, then render it again.';
+            return 'The dashboard draws an error in the widget\'s place for these calls: fix the data_failures in the manifest with update_widget, then render it again.';
         }
 
         if (! $rendered) {
             return 'The widget did not draw: fix the errors with update_widget, then render it again.';
         }
 
-        if ($render['diagnostics'] !== [] || $render['errors'] !== []) {
+        if ($render['errors'] !== []) {
+            return 'The widget drew but reported errors: fix them with update_widget, then render it again.';
+        }
+
+        if ($render['diagnostics'] !== []) {
             return 'Fix the diagnostics that are not intended with update_widget, then render it again. Check the html reads right too.';
         }
 

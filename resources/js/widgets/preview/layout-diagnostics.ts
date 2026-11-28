@@ -38,9 +38,12 @@ const MAX_PER_KIND = 5;
 /** Under this share of a fixed-height cell, the widget leaves it mostly empty. */
 const MIN_FILL = 0.4;
 
-/** What recharts draws data with; axes, grids and legends are not a series. */
+/**
+ * What recharts draws data with; axes, grids, legends and the hover cursor
+ * are not a series.
+ */
 const CHART_SERIES =
-    '.recharts-bar-rectangle, .recharts-line-curve, .recharts-area-area, .recharts-area-curve, .recharts-pie-sector, .recharts-sector, .recharts-radial-bar-sector, .recharts-scatter-symbol, .recharts-funnel-trapezoid, .recharts-treemap-depth-1, .recharts-rectangle, .recharts-dot';
+    '.recharts-bar-rectangle, .recharts-line-curve, .recharts-area-area, .recharts-area-curve, .recharts-pie-sector, .recharts-radial-bar-sector, .recharts-scatter-symbol, .recharts-funnel-trapezoid, .recharts-treemap-depth-1';
 
 /** Recharts keeps its tooltip in the DOM, hidden until hovered. */
 const IGNORED = '.recharts-tooltip-wrapper, [aria-hidden="true"] *';
