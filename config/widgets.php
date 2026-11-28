@@ -56,4 +56,27 @@ return [
         'timeout' => (int) env('WIDGETS_COMPILE_TIMEOUT', 10),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Widget renderer
+    |--------------------------------------------------------------------------
+    |
+    | render_widget draws a widget in headless Chromium (scripts/render-widget.mjs)
+    | inside the MCP request, so the agent reads the result in the same turn.
+    | A cold browser start and a chart take a second or two; past the timeout
+    | the browser answers with what it has, so a widget stuck in a loop costs
+    | the agent a timeout error rather than holding the request.
+    |
+    | Each render is a Chromium process held by a web worker, so at most
+    | `concurrency` run at once on the server, and one per user; past that the
+    | agent is told to try again in a moment.
+    |
+    */
+
+    'renderer' => [
+        'timeout' => (int) env('WIDGETS_RENDER_TIMEOUT', 20),
+
+        'concurrency' => (int) env('WIDGETS_RENDER_CONCURRENCY', 3),
+    ],
+
 ];

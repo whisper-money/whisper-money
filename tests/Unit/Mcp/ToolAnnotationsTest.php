@@ -28,6 +28,7 @@ $readOnly = [
     'list_dashboards',
     'get_widget_sdk',
     'get_widget',
+    'render_widget',
 ];
 
 $destructive = [

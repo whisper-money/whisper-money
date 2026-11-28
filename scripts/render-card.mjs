@@ -1,9 +1,8 @@
 // Turns rendered cards into PNGs.
 //
 // The cards are Blade views that PHP has already rendered to standalone HTML
-// files; this only opens them and takes the pictures. Playwright is used rather
-// than a second browser stack because it is already a dependency of the Pest
-// browser suite, so the images carry the same Chromium the tests run on.
+// files; this only opens them and takes the pictures, in the Chromium
+// lib/chromium.mjs starts.
 //
 // A whole month's worth of cards arrives in one manifest and shares one browser:
 // starting Chromium costs more than the fifteen screenshots that follow, and the
@@ -19,8 +18,8 @@
 // Manifest: [{ "html": "in.html", "png": "out.png", "width": 1080, "height": 1350 }]
 
 import { readFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
 import process from 'node:process';
+import { launchChromium } from './lib/chromium.mjs';
 
 const [manifestPath] = process.argv.slice(2);
 
@@ -35,13 +34,7 @@ const jobs = JSON.parse(await readFile(manifestPath, 'utf8'));
 // worker: fall through to the fallback stack rather than wait forever.
 const FONT_TIMEOUT_MS = 8000;
 
-// `channel: 'chromium'` asks for the full browser rather than the headless
-// shell, which is a separate download that `playwright install chromium` does
-// not always place — and a card is worth one extra binary in the image.
-const browser = await chromium.launch({
-    channel: 'chromium',
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=none'],
-});
+const browser = await launchChromium(['--font-render-hinting=none']);
 
 try {
     const page = await browser.newPage({ deviceScaleFactor: 1 });
