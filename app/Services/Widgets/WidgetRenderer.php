@@ -198,7 +198,8 @@ class WidgetRenderer
             throw $this->unavailable("exit code {$result->exitCode()}: ".mb_substr(trim($result->errorOutput()), 0, 500));
         }
 
-        return $this->parse($result->output());
+        // Stacks name the page by its scratch path, which means nothing to the agent.
+        return $this->parse(str_replace("file://{$html}", 'widget-preview', $result->output()));
     }
 
     /**

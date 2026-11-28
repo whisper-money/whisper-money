@@ -199,6 +199,23 @@ describe('layoutDiagnostics', () => {
         ]);
     });
 
+    it('finds a ResponsiveContainer that measured no room and drew no chart', () => {
+        const cell = makeCell(
+            '<div class="recharts-responsive-container"><div style="width: 0px; height: 0px"></div></div>',
+        );
+        place(cell.querySelector('.recharts-responsive-container')!, {
+            width: 400,
+            height: 0,
+        });
+
+        expect(layoutDiagnostics(cell).diagnostics).toContainEqual({
+            kind: 'chart_no_size',
+            message:
+                "A chart's container is 400×0px, so it draws nothing: a ResponsiveContainer needs a parent with a height (h-full on every ancestor up to the cell, or a fixed one).",
+            element: 'div.recharts-responsive-container',
+        });
+    });
+
     it('says when a fixed cell is mostly empty, or nothing shows at all', () => {
         const sparse = makeCell('<p>Hola</p>');
         place(sparse.querySelector('p')!, { top: 0, width: 100, height: 40 });

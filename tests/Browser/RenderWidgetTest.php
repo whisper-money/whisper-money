@@ -126,6 +126,15 @@ it('says when a chart draws no series', function () {
         ->and(array_column($json['diagnostics'], 'kind'))->toContain('chart_empty');
 });
 
+it('says when a chart has no height to draw in', function () {
+    $user = userWithGroceries();
+    $widget = renderedWidget($user, str_replace('<div className="min-h-0 flex-1">', '<div>', groceriesChartSource()));
+
+    $json = renderWidgetForReal($user, $widget);
+
+    expect(array_column($json['diagnostics'], 'kind'))->toContain('chart_no_size');
+});
+
 it('reports text cut short and content the cell clips', function () {
     $user = userWithGroceries();
     $widget = renderedWidget($user, <<<'TSX'

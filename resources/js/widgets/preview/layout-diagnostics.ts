@@ -215,14 +215,32 @@ function scrollContainers(cell: HTMLElement, found: LayoutDiagnostic[]): void {
     }
 }
 
+const NO_SIZE_MESSAGE =
+    'so it draws nothing: a ResponsiveContainer needs a parent with a height (h-full on every ancestor up to the cell, or a fixed one).';
+
 function charts(cell: HTMLElement, found: LayoutDiagnostic[]): void {
+    // A ResponsiveContainer that measured no room never draws its chart.
+    for (const container of cell.querySelectorAll(
+        '.recharts-responsive-container',
+    )) {
+        if (container.querySelector('.recharts-wrapper') === null) {
+            const box = container.getBoundingClientRect();
+
+            found.push({
+                kind: 'chart_no_size',
+                message: `A chart's container is ${Math.round(box.width)}×${Math.round(box.height)}px, ${NO_SIZE_MESSAGE}`,
+                element: describe(container),
+            });
+        }
+    }
+
     for (const chart of cell.querySelectorAll('.recharts-wrapper')) {
         const box = chart.getBoundingClientRect();
 
         if (box.width < TOLERANCE_PX || box.height < TOLERANCE_PX) {
             found.push({
                 kind: 'chart_no_size',
-                message: `A chart is ${Math.round(box.width)}×${Math.round(box.height)}px, so it draws nothing: a ResponsiveContainer needs a parent with a height (h-full on every ancestor up to the cell, or a fixed one).`,
+                message: `A chart is ${Math.round(box.width)}×${Math.round(box.height)}px, ${NO_SIZE_MESSAGE}`,
                 element: describe(chart),
             });
 
