@@ -2158,6 +2158,7 @@ function BudgetEditPreview() {
 const PRO_ONLY_FEATURES = [
     'Connect bank accounts',
     'AI Suggestions',
+    'Custom dashboards with AI-built widgets',
     'Priority support',
 ];
 
@@ -2191,9 +2192,11 @@ function useLandingCta(
 function FreePlanCard({
     features,
     canRegister = false,
+    isLatam = false,
 }: {
     features: string[];
     canRegister?: boolean;
+    isLatam?: boolean;
 }) {
     const excluded = new Set(PRO_ONLY_FEATURES);
     const cta = useLandingCta(canRegister, 'free');
@@ -2213,9 +2216,11 @@ function FreePlanCard({
                 </div>
 
                 <p className="mt-3 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                    {__(
-                        'Get started at no cost. No bank connections included.',
-                    )}
+                    {isLatam
+                        ? __('Get started at no cost.')
+                        : __(
+                              'Get started at no cost. No bank connections included.',
+                          )}
                 </p>
 
                 <div className="my-5 h-px bg-[#e3e3e0] dark:bg-[#3E3E3A]" />
@@ -3531,14 +3536,17 @@ export default function Welcome({
                                     )}
                                 >
                                     <FreePlanCard
-                                        // The standard plan's list, so the
-                                        // bank connection still reads as the
-                                        // one thing free leaves out.
+                                        // The offered tier's paid list, so
+                                        // what free leaves out reads against
+                                        // it. The latam tier has no bank
+                                        // connections, so it lists none.
                                         features={[
-                                            ...Object.values(pricing.plans)[0]
-                                                .features,
+                                            ...(Object.values(
+                                                tierChoice.plans,
+                                            )[0]?.features ?? []),
                                         ]}
                                         canRegister={canRegister}
+                                        isLatam={tierChoice.tier === 'latam'}
                                     />
                                     {displayedPlanEntries.map(([key, plan]) => (
                                         <LandingPlanCard

@@ -372,6 +372,18 @@ test('pricing config includes all plan details', function () {
         );
 });
 
+test('the landing pricing lists custom dashboards with AI-built widgets as a paid benefit', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome')
+            ->where('pricing.plans.monthly.features', fn ($features) => collect($features)->contains('Custom dashboards with AI-built widgets'))
+            ->where('pricing.plans.yearly.features', fn ($features) => collect($features)->contains('Custom dashboards with AI-built widgets'))
+        );
+});
+
 test('users without bank connections can access protected routes after seeing paywall', function () {
     $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
 
