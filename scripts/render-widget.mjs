@@ -10,7 +10,7 @@
 // Nothing leaves the machine: the payload carries the user's data. The browser
 // resolves no host name, opens no WebSocket and no non-proxied WebRTC socket,
 // runs no service worker, and every request that is not for the page's own
-// file is refused. (The widget validator already refuses network code; this
+// file is refused, other files on this disk included. (The widget validator already refuses network code; this
 // holds even if something slipped past it.)
 //
 // Usage:
@@ -25,6 +25,7 @@
 
 import { readFile } from 'node:fs/promises';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 import { launchChromium } from './lib/chromium.mjs';
 
 const [jobPath] = process.argv.slice(2);
@@ -35,6 +36,9 @@ if (!jobPath) {
 }
 
 const job = JSON.parse(await readFile(jobPath, 'utf8'));
+
+/** The one URL the page may load: itself. Any other file on this disk is refused too. */
+const pageUrl = pathToFileURL(job.html).href;
 
 /** An `a` cell is as tall as its content: give it room to grow into. */
 const AUTO_VIEWPORT_HEIGHT = 2000;
@@ -92,7 +96,7 @@ try {
     });
 
     await context.route(
-        (url) => url.protocol !== 'file:',
+        (url) => url.href !== pageUrl,
         (route) => route.abort(),
     );
     await context.routeWebSocket(/.*/, (socket) => socket.close());
@@ -113,7 +117,7 @@ try {
         { payload: job.payload, theme: job.theme, cell: job.cell },
     );
 
-    await page.goto(`file://${job.html}`, { waitUntil: 'load' });
+    await page.goto(pageUrl, { waitUntil: 'load' });
     await page.waitForFunction(
         () => {
             const status = document

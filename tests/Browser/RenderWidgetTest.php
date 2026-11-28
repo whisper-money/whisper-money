@@ -176,3 +176,29 @@ it('answers with the error a widget throws while rendering', function () {
         ->and($json['errors'][0]['phase'])->toBe('render')
         ->and($json['errors'][0]['message'])->toContain('length');
 });
+
+it('refuses every request but the page itself, local files included', function () {
+    // The validator refuses <img> and any URL at save time; this is the
+    // browser's own wall, so the widget is stored already compiled, as if
+    // something had slipped past it. The image is a real one on this disk:
+    // only the route can stop it loading.
+    $image = tempnam(sys_get_temp_dir(), 'wm-local-').'.png';
+    file_put_contents($image, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='));
+    $user = userWithGroceries();
+    $widget = WidgetDefinition::factory()->for($user)->create([
+        'compiled_js' => 'import{useState as s}from"react";import{jsx as e,jsxs as x}from"react/jsx-runtime";'
+            .'function t(){const[r,u]=s("pending");return x("div",{children:['
+            .'e("img",{src:'.json_encode('file://'.$image).',onLoad:()=>u("loaded"),onError:()=>u("refused")}),'
+            .'e("p",{children:"local file: "+r})]})}export{t as default};',
+    ]);
+
+    try {
+        $json = renderWidgetForReal($user, $widget);
+    } finally {
+        @unlink($image);
+    }
+
+    expect($json['status'])->toBe('ready')
+        ->and($json['html'])->toContain('local file: refused')
+        ->not->toContain('local file: loaded');
+});
