@@ -69,8 +69,8 @@ trait PresentsWidgets
         return $this->widgetResponse($user, $widget, [
             'saved' => true,
             'next' => $widget->placements()->exists()
-                ? 'The dashboards it is on now draw this revision. Fix any data_failures with update_widget.'
-                : 'Fix any data_failures with update_widget, then place it on a dashboard with place_widget (list_dashboards gives the ids, create_dashboard makes one).',
+                ? 'The dashboards it is on now draw this revision. Call render_widget to see how it looks and fix what it reports, and any data_failures, with update_widget.'
+                : 'Call render_widget to see how it looks and fix what it reports, and any data_failures, with update_widget. Then place it on a dashboard with place_widget (list_dashboards gives the ids, create_dashboard makes one).',
         ]);
     }
 

@@ -1,0 +1,159 @@
+// Draws one dashboard widget in headless Chromium and says what came out, for
+// the render_widget MCP tool (App\Services\Widgets\WidgetRenderer).
+//
+// The page is the widget preview MCP App's own HTML (the same SDK, module
+// registry, error boundary and stylesheet as the dashboard), opened with the
+// payload already on `window`, so it draws the bare cell at the size the
+// dashboard's grid gives it (resources/js/widgets/preview/render-mode.tsx).
+// The agent's TSX only ever runs inside this browser.
+//
+// Nothing leaves the machine: the payload carries the user's data, and every
+// http(s) request the page makes is refused.
+//
+// Usage:
+//   node scripts/render-widget.mjs <job.json>
+//
+// Job: { "html": "preview.html", "payload": {…}, "theme": "light",
+//        "cell": { "width": 395, "height": 256 }, "max_html_length": 30000,
+//        "timeout_ms": 20000 }
+//
+// Prints one JSON object: what window.__whisperMoneyInspect() returns, plus
+// `console` (the errors and warnings the page logged) and `timed_out`.
+
+import { readFile } from 'node:fs/promises';
+import process from 'node:process';
+import { launchChromium } from './lib/chromium.mjs';
+
+const [jobPath] = process.argv.slice(2);
+
+if (!jobPath) {
+    console.error('usage: render-widget.mjs <job.json>');
+    process.exit(2);
+}
+
+const job = JSON.parse(await readFile(jobPath, 'utf8'));
+
+/** An `a` cell is as tall as its content: give it room to grow into. */
+const AUTO_VIEWPORT_HEIGHT = 2000;
+
+/** Charts that ignore reduced motion still animate: wait for the DOM to rest. */
+const QUIET_MS = 300;
+const MAX_SETTLE_MS = 3000;
+
+const MAX_CONSOLE_MESSAGES = 10;
+
+const consoleMessages = [];
+
+function logged(type, text) {
+    if (consoleMessages.length < MAX_CONSOLE_MESSAGES) {
+        consoleMessages.push({ type, text: String(text).slice(0, 500) });
+    }
+}
+
+const browser = await launchChromium();
+
+// A widget stuck in a loop blocks the page, and page.evaluate() has no
+// timeout of its own: past the deadline, answer with what is known.
+const deadline = setTimeout(async () => {
+    process.stdout.write(
+        JSON.stringify({ timed_out: true, console: consoleMessages }),
+    );
+    await browser.close().catch(() => undefined);
+    process.exit(0);
+}, job.timeout_ms);
+
+try {
+    const context = await browser.newContext({
+        viewport: {
+            width: job.cell.width,
+            height: job.cell.height ?? AUTO_VIEWPORT_HEIGHT,
+        },
+        deviceScaleFactor: 1,
+        colorScheme: job.theme,
+        // Recharts skips its animations then, so the chart is drawn at once.
+        reducedMotion: 'reduce',
+    });
+
+    await context.route(/^(https?|wss?):/, (route) => route.abort());
+
+    const page = await context.newPage();
+
+    page.on('console', (message) => {
+        if (['error', 'warning'].includes(message.type())) {
+            logged(message.type(), message.text());
+        }
+    });
+    page.on('pageerror', (error) => logged('error', error.message));
+
+    await page.addInitScript(
+        (request) => {
+            window.__whisperMoneyRender = request;
+        },
+        { payload: job.payload, theme: job.theme, cell: job.cell },
+    );
+
+    await page.goto(`file://${job.html}`, { waitUntil: 'load' });
+    await page.waitForFunction(
+        () => {
+            const status = document
+                .querySelector('[data-render-status]')
+                ?.getAttribute('data-render-status');
+
+            return (
+                status !== undefined && status !== null && status !== 'loading'
+            );
+        },
+        null,
+        { timeout: job.timeout_ms },
+    );
+    await page.evaluate(
+        ([quietMs, maxMs]) =>
+            new Promise((resolve) => {
+                let quiet = setTimeout(done, quietMs);
+                const cap = setTimeout(done, maxMs);
+                const observer = new MutationObserver(() => {
+                    clearTimeout(quiet);
+                    quiet = setTimeout(done, quietMs);
+                });
+
+                function done() {
+                    observer.disconnect();
+                    clearTimeout(quiet);
+                    clearTimeout(cap);
+                    resolve();
+                }
+
+                observer.observe(document.body, {
+                    subtree: true,
+                    childList: true,
+                    attributes: true,
+                    characterData: true,
+                });
+            }),
+        [QUIET_MS, MAX_SETTLE_MS],
+    );
+
+    const inspection = await page.evaluate(
+        (maxLength) => window.__whisperMoneyInspect(maxLength),
+        job.max_html_length,
+    );
+
+    process.stdout.write(
+        JSON.stringify({
+            ...inspection,
+            timed_out: false,
+            console: consoleMessages,
+        }),
+    );
+} catch (error) {
+    if (error?.name === 'TimeoutError') {
+        process.stdout.write(
+            JSON.stringify({ timed_out: true, console: consoleMessages }),
+        );
+    } else {
+        throw error;
+    }
+} finally {
+    clearTimeout(deadline);
+    await browser.close();
+}

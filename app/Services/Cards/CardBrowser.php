@@ -2,7 +2,7 @@
 
 namespace App\Services\Cards;
 
-use Illuminate\Support\Facades\Process;
+use App\Services\Browser\HeadlessChromium;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -12,8 +12,9 @@ use RuntimeException;
  * This is the half of the card pipeline that knows nothing about what it is
  * drawing — one headless Chromium, a batch of pages, a PNG each. Monthly
  * summaries and achievement medals both come through here, so the parts that
- * were painful to get right (the crashpad HOME, the batch timeout, keeping the
- * cards that rendered when one of them dies) are solved once.
+ * were painful to get right (the batch timeout, keeping the cards that
+ * rendered when one of them dies) are solved once; the subprocess itself
+ * (the crashpad HOME) is {@see HeadlessChromium}'s.
  *
  * What a card *is* — its path, its disk, its cache key, its Blade view —
  * belongs to whatever owns the card, not here. The disk travels with each page
@@ -35,6 +36,8 @@ class CardBrowser
      * free either.
      */
     private const TIMEOUT_PER_CARD_SECONDS = 10;
+
+    public function __construct(private HeadlessChromium $chromium) {}
 
     /**
      * Write one page out as HTML, ready to be photographed. The caller decides
@@ -76,13 +79,11 @@ class CardBrowser
         file_put_contents($manifest, json_encode($pages));
 
         try {
-            $result = Process::env($this->environment())
-                ->timeout(self::TIMEOUT_SECONDS + self::TIMEOUT_PER_CARD_SECONDS * count($pages))
-                ->run([
-                    (string) config('monthly_summary.node_binary'),
-                    base_path('scripts/render-card.mjs'),
-                    $manifest,
-                ]);
+            $result = $this->chromium->run(
+                'scripts/render-card.mjs',
+                $manifest,
+                self::TIMEOUT_SECONDS + self::TIMEOUT_PER_CARD_SECONDS * count($pages),
+            );
 
             $missing = 0;
 
@@ -107,39 +108,5 @@ class CardBrowser
                 @unlink($page['png']);
             }
         }
-    }
-
-    /**
-     * What the render subprocess is given on top of what it inherits.
-     *
-     * Chromium keeps its crash database under $HOME, and without a writable one
-     * the crash handler exits before the browser is usable —
-     * `chrome_crashpad_handler: --database is required`, then SIGTRAP. php-fpm
-     * does not hand its workers the environment the image sets, so fixing it in
-     * the container only ever fixed the queue worker: every card drawn inside a
-     * web request still died.
-     *
-     * But HOME is also where Playwright looks for the browsers it installed, so
-     * moving it unconditionally hides them from itself — which is why this never
-     * worked on a developer's machine, where nothing sets
-     * PLAYWRIGHT_BROWSERS_PATH and the real HOME is the only place the browser
-     * exists. Production pins that variable in the image, so there the override
-     * was harmless and the bug stayed invisible.
-     *
-     * So: only move HOME when the one we have cannot do the job. A writable HOME
-     * is exactly what the crash handler needs and exactly what Playwright needs
-     * left alone.
-     *
-     * @return array<string, string>
-     */
-    private function environment(): array
-    {
-        $home = (string) getenv('HOME');
-
-        if ($home !== '' && is_writable($home)) {
-            return [];
-        }
-
-        return ['HOME' => sys_get_temp_dir()];
     }
 }

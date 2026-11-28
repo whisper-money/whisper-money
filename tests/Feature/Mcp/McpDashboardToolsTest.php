@@ -12,6 +12,7 @@ use App\Mcp\Tools\GetWidgetSdk;
 use App\Mcp\Tools\ListDashboards;
 use App\Mcp\Tools\PlaceWidget;
 use App\Mcp\Tools\RemoveWidget;
+use App\Mcp\Tools\RenderWidget;
 use App\Mcp\Tools\UpdateWidget;
 use App\Models\Account;
 use App\Models\Category;
@@ -22,6 +23,9 @@ use App\Models\User;
 use App\Models\WidgetDefinition;
 use App\Services\Widgets\WidgetCompiler;
 use App\Services\Widgets\WidgetDefinitionService;
+use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Process;
 use Laravel\Mcp\Server\Testing\TestResponse;
 
 /**
@@ -381,6 +385,7 @@ describe('permissions', function () {
             ->and($theirDashboard->widgets()->count())->toBe(1);
     })->with([
         'get_widget' => [GetWidget::class, fn ($dashboard, $widget) => ['widget_id' => $widget->id], 'No widget with id'],
+        'render_widget' => [RenderWidget::class, fn ($dashboard, $widget) => ['widget_id' => $widget->id], 'No widget with id'],
         'update_widget' => [UpdateWidget::class, fn ($dashboard, $widget) => ['widget_id' => $widget->id, 'source' => mcpWidgetSource()], 'No widget with id'],
         'place their widget' => [PlaceWidget::class, fn ($dashboard, $widget, $ownDashboard) => ['dashboard_id' => $ownDashboard->id, 'widget_id' => $widget->id], 'No widget with id'],
         'place on their dashboard' => [PlaceWidget::class, fn ($dashboard, $widget, $ownDashboard, $ownWidget) => ['dashboard_id' => $dashboard->id, 'widget_id' => $ownWidget->id], 'No dashboard with id'],
@@ -405,6 +410,7 @@ describe('gate', function () {
         'create_widget' => [CreateWidget::class],
         'update_widget' => [UpdateWidget::class],
         'get_widget' => [GetWidget::class],
+        'render_widget' => [RenderWidget::class],
         'place_widget' => [PlaceWidget::class],
         'remove_widget' => [RemoveWidget::class],
     ];
@@ -430,6 +436,183 @@ describe('gate', function () {
             ->assertHasErrors()
             ->assertSee('not available on the shared demo and press accounts');
     })->with($tools)->with(['demo', 'press']);
+});
+
+describe('render_widget', function () {
+    /*
+     * The browser is faked here: these are the tool's rules (whose widget,
+     * what it hands the browser, how it answers each outcome).
+     * tests/Browser/RenderWidgetTest.php draws widgets in real Chromium.
+     */
+    beforeEach(function () {
+        $this->mock(WidgetPreview::class)->shouldReceive('document')->andReturn('<!DOCTYPE html><div id="widget-preview"></div>');
+        $this->jobs = [];
+    });
+
+    /**
+     * Answer every render with $output, keeping the job each one was given.
+     *
+     * @param  array<string, mixed>  $output
+     */
+    function fakeRenderBrowser(object $test, array $output, int $exitCode = 0, string $errorOutput = ''): void
+    {
+        Process::fake(function (PendingProcess $process) use ($test, $output, $exitCode, $errorOutput) {
+            $test->jobs[] = json_decode((string) file_get_contents((string) last($process->command)), true);
+
+            return Process::result((string) json_encode($output), $errorOutput, $exitCode);
+        });
+    }
+
+    /** @return array<string, mixed> */
+    function drawnWidgetOutput(array $overrides = []): array
+    {
+        return [
+            'timed_out' => false,
+            'status' => 'ready',
+            'html' => '<div class="wm-widget"><p>Cuentas: 1</p></div>',
+            'truncated' => false,
+            'diagnostics' => [],
+            'errors' => [],
+            'console' => [],
+            'content_height' => 120,
+            'cell_height' => 256,
+            'cell_width' => 604,
+            ...$overrides,
+        ];
+    }
+
+    it('draws the user\'s widget at its dashboard cell and answers with what came out', function () {
+        $user = User::factory()->create();
+        Account::factory()->for($user)->create();
+        $widget = savedMcpWidget($user);
+        fakeRenderBrowser($this, drawnWidgetOutput());
+
+        $json = dashboardToolJson(callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])->assertOk());
+
+        expect($json)->toMatchArray([
+            'rendered' => true,
+            'widget_id' => $widget->id,
+            'revision' => 1,
+            'status' => 'ready',
+            'size' => ['width' => '1/2', 'height' => 'm', 'width_px' => 604, 'height_px' => 256, 'content_height_px' => 120],
+            'diagnostics' => [],
+            'errors' => [],
+            'data_failures' => [],
+            'html_truncated' => false,
+            'html' => '<div class="wm-widget"><p>Cuentas: 1</p></div>',
+        ])->and($json['next'])->toContain('No layout problems found');
+
+        // The browser gets the preview's own page and payload, with the data.
+        [$job] = $this->jobs;
+        expect($job['theme'])->toBe('light')
+            ->and($job['cell'])->toBe(['width' => 604, 'height' => 256])
+            ->and($job['payload']['widget_id'])->toBe($widget->id)
+            ->and($job['payload']['data']['accounts']['data'])->toHaveCount(1)
+            ->and($job['html'])->toEndWith('.html');
+    });
+
+    it('draws it in another size and theme when asked, and tells the widget so', function () {
+        $user = User::factory()->create();
+        $widget = savedMcpWidget($user);
+        fakeRenderBrowser($this, drawnWidgetOutput());
+
+        $json = dashboardToolJson(callDashboardTool($user, RenderWidget::class, [
+            'widget_id' => $widget->id, 'theme' => 'dark', 'width' => '1/1', 'height' => 'a',
+        ])->assertOk());
+
+        expect($json['size'])->toMatchArray(['width' => '1/1', 'height' => 'a', 'width_px' => 1232, 'height_px' => null])
+            ->and($this->jobs[0]['theme'])->toBe('dark')
+            ->and($this->jobs[0]['cell'])->toBe(['width' => 1232, 'height' => null])
+            ->and($this->jobs[0]['payload']['size'])->toBe(['width' => '1/1', 'height' => 'a']);
+    });
+
+    it('refuses a size or theme that does not exist', function () {
+        $user = User::factory()->create();
+        $widget = savedMcpWidget($user);
+        fakeRenderBrowser($this, drawnWidgetOutput());
+
+        callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id, 'width' => '2/3'])
+            ->assertHasErrors();
+
+        Process::assertNothingRan();
+    });
+
+    it('passes on what is wrong with the layout and how to go on', function () {
+        $user = User::factory()->create();
+        $widget = savedMcpWidget($user);
+        fakeRenderBrowser($this, drawnWidgetOutput([
+            'diagnostics' => [['kind' => 'text_truncated', 'message' => 'Shows 200px of 340px of text.', 'element' => 'p.truncate "Una descripción"']],
+            'html' => str_repeat('<p>x</p>', 10),
+            'truncated' => true,
+        ]));
+
+        $json = dashboardToolJson(callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])->assertOk());
+
+        expect($json['rendered'])->toBeTrue()
+            ->and($json['diagnostics'][0]['kind'])->toBe('text_truncated')
+            ->and($json['html_truncated'])->toBeTrue()
+            ->and($json['next'])->toContain('Fix the diagnostics');
+    });
+
+    it('answers with the error the widget threw, its stack readable', function () {
+        $user = User::factory()->create();
+        $widget = savedMcpWidget($user);
+        fakeRenderBrowser($this, drawnWidgetOutput([
+            'status' => 'crashed',
+            'errors' => [[
+                'phase' => 'render',
+                'message' => "Cannot read properties of undefined (reading 'length')",
+                'stack' => "TypeError: Cannot read properties of undefined\n    at B (data:text/javascript;base64,aW1wb3J0:3:15)",
+                'componentStack' => null,
+            ]],
+        ]));
+
+        $json = dashboardToolJson(callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])->assertOk());
+
+        expect($json['rendered'])->toBeFalse()
+            ->and($json['status'])->toBe('crashed')
+            ->and($json['errors'][0]['stack'])->toContain('at B (widget.js:3:15)')
+            ->and($json['next'])->toContain('did not draw');
+    });
+
+    it('says the widget never finished drawing when the browser gave up waiting', function () {
+        $user = User::factory()->create();
+        $widget = savedMcpWidget($user);
+        fakeRenderBrowser($this, ['timed_out' => true, 'console' => []]);
+
+        $json = dashboardToolJson(callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])->assertOk());
+
+        expect($json['rendered'])->toBeFalse()
+            ->and($json['status'])->toBe('timeout')
+            ->and($json['html'])->toBeNull()
+            ->and($json['errors'][0]['phase'])->toBe('timeout');
+    });
+
+    it('reports a broken browser to us and tells the agent it is on our side', function () {
+        Exceptions::fake();
+        $user = User::factory()->create();
+        $widget = savedMcpWidget($user);
+        fakeRenderBrowser($this, [], exitCode: 1, errorOutput: "browserType.launch: Executable doesn't exist");
+
+        callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])
+            ->assertHasErrors(['The widget could not be drawn because of an error on our side. Try again in a moment.']);
+
+        Exceptions::assertReported(fn (RuntimeException $exception): bool => str_contains($exception->getMessage(), "Executable doesn't exist"));
+    });
+
+    it('reports a preview that was never built, without starting a browser', function () {
+        Exceptions::fake();
+        $this->mock(WidgetPreview::class)->shouldReceive('document')->andReturn(null);
+        $user = User::factory()->create();
+        $widget = savedMcpWidget($user);
+        Process::fake();
+
+        callDashboardTool($user, RenderWidget::class, ['widget_id' => $widget->id])
+            ->assertHasErrors(['an error on our side']);
+
+        Process::assertNothingRan();
+        Exceptions::assertReported(fn (RuntimeException $exception): bool => str_contains($exception->getMessage(), 'not built'));
+    });
 });
 
 describe('preview app', function () {

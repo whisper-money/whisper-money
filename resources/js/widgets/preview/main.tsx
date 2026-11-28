@@ -6,7 +6,9 @@
  *
  * It waits for the result of create_widget, update_widget or get_widget and
  * draws the widget from the payload in its `_meta`
- * (App\Services\Widgets\WidgetPreviewPayload::MetaKey).
+ * (App\Services\Widgets\WidgetPreviewPayload::MetaKey). Opened by
+ * render_widget's headless browser instead, it finds the payload already on
+ * `window` and draws the bare cell (render-mode.tsx).
  */
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -14,6 +16,7 @@ import '../../../css/app.css';
 import '../../../css/widgets.css';
 import { type WidgetRuntimeError } from '../runtime/widget-error-boundary';
 import { setPreviewPage } from './inertia-page';
+import { renderForInspection } from './render-mode';
 import { WidgetPreview, type WidgetPreviewPayload } from './widget-preview';
 
 const META_KEY = 'whisper-money/widget-preview';
@@ -98,26 +101,32 @@ function Preview({ app }: { app: McpApp }) {
     );
 }
 
-void window.createMcpApp?.((app) => {
-    host.update({ theme: app.getHostContext()?.theme ?? 'light' });
-    app.onToolResult((result) => {
-        const payload = result._meta?.[META_KEY];
+const container = document.getElementById('widget-preview')!;
 
-        if (payload && typeof payload === 'object') {
-            setPreviewPage(payload as WidgetPreviewPayload);
-            host.update({ payload: payload as WidgetPreviewPayload });
-        }
-    });
-    app.onHostContextChanged((context) => {
-        if (context.theme) {
-            host.update({ theme: context.theme });
-        }
-    });
-    app.autoResize();
+if (window.__whisperMoneyRender) {
+    renderForInspection(window.__whisperMoneyRender, container);
+} else {
+    void window.createMcpApp?.((app) => {
+        host.update({ theme: app.getHostContext()?.theme ?? 'light' });
+        app.onToolResult((result) => {
+            const payload = result._meta?.[META_KEY];
 
-    createRoot(document.getElementById('widget-preview')!).render(
-        <StrictMode>
-            <Preview app={app} />
-        </StrictMode>,
-    );
-});
+            if (payload && typeof payload === 'object') {
+                setPreviewPage(payload as WidgetPreviewPayload);
+                host.update({ payload: payload as WidgetPreviewPayload });
+            }
+        });
+        app.onHostContextChanged((context) => {
+            if (context.theme) {
+                host.update({ theme: context.theme });
+            }
+        });
+        app.autoResize();
+
+        createRoot(container).render(
+            <StrictMode>
+                <Preview app={app} />
+            </StrictMode>,
+        );
+    });
+}

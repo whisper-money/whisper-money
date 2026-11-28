@@ -3,6 +3,7 @@
 namespace App\Mcp\Resources;
 
 use App\Services\Widgets\WidgetPreviewPayload;
+use App\Services\Widgets\WidgetRenderer;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\AppResource;
@@ -31,11 +32,31 @@ class WidgetPreview extends AppResource
 
     public function handle(Request $request): Response
     {
-        return Response::view('mcp.widget-preview', [
+        return Response::view('mcp.widget-preview', $this->viewData());
+    }
+
+    /**
+     * The same HTML, for render_widget's headless browser
+     * ({@see WidgetRenderer}), which draws the widget
+     * from it with nothing around. Null when the preview has not been built.
+     */
+    public function document(): ?string
+    {
+        $data = $this->viewData();
+
+        return $data['script'] === null ? null : view('mcp.widget-preview', $data)->render();
+    }
+
+    /**
+     * @return array{title: string, script: ?string, style: ?string}
+     */
+    private function viewData(): array
+    {
+        return [
             'title' => 'Widget preview',
             'script' => $this->asset('widget-preview.js', '</script'),
             'style' => $this->asset('widget-preview.css', '</style'),
-        ]);
+        ];
     }
 
     /**

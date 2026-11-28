@@ -6,7 +6,13 @@ import { cn } from '@/lib/utils';
 import { type Category } from '@/types/category';
 import { type WidgetFrame } from '@/types/dashboard';
 import { type Label } from '@/types/label';
-import { type ComponentType, useEffect, useRef, useState } from 'react';
+import {
+    type ComponentType,
+    type CSSProperties,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
 import {
     isWidgetCarded,
     useWidgetCrash,
@@ -165,6 +171,18 @@ function useWidgetComponent(
 }
 
 /**
+ * Where a preview stands, on its cell as `data-render-status`: render_widget's
+ * browser (scripts/render-widget.mjs) waits for it to leave `loading`.
+ */
+export type WidgetPreviewStatus =
+    | 'loading'
+    | 'ready'
+    | 'failed'
+    | 'crashed'
+    | 'data-failure'
+    | 'data-too-large';
+
+/**
  * One widget drawn as the dashboard draws it, with the same SDK, error
  * boundary and stylesheet, from the payload a widget tool returned.
  */
@@ -177,10 +195,66 @@ export function WidgetPreview({
     theme: 'light' | 'dark';
     onError: (error: WidgetRuntimeError) => void;
 }) {
-    const state = useWidgetComponent(payload.js, onError);
     // Privacy mode lives in the user's browser, not on the server: let them
     // check here that the widget hides its figures.
     const [privacyMode, setPrivacyMode] = useState(false);
+
+    return (
+        <figure className="flex flex-col gap-2 p-2">
+            <figcaption className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span className="truncate font-medium text-foreground">
+                    {payload.name}
+                </span>
+                <span className="flex shrink-0 items-center gap-3">
+                    <label className="flex items-center gap-1">
+                        <input
+                            type="checkbox"
+                            checked={privacyMode}
+                            onChange={(event) =>
+                                setPrivacyMode(event.target.checked)
+                            }
+                        />
+                        Hide amounts
+                    </label>
+                    <span>
+                        {payload.size.width} · {payload.size.height} · rev{' '}
+                        {payload.revision}
+                    </span>
+                </span>
+            </figcaption>
+            <WidgetPreviewCell
+                payload={payload}
+                theme={theme}
+                privacyMode={privacyMode}
+                onError={onError}
+                style={{
+                    height: HEIGHTS[payload.size.height],
+                    maxWidth: MAX_WIDTHS[payload.size.width],
+                }}
+            />
+        </figure>
+    );
+}
+
+/**
+ * The widget's cell alone, as the dashboard's grid holds it: what the chat
+ * preview frames with its caption and render_widget photographs at the
+ * cell's real size.
+ */
+export function WidgetPreviewCell({
+    payload,
+    theme,
+    privacyMode,
+    onError,
+    style,
+}: {
+    payload: WidgetPreviewPayload;
+    theme: 'light' | 'dark';
+    privacyMode: boolean;
+    onError: (error: WidgetRuntimeError) => void;
+    style: CSSProperties;
+}) {
+    const state = useWidgetComponent(payload.js, onError);
     const [failure] = payload.failures;
     const { crashed, markCrashed } = useWidgetCrash(payload);
 
@@ -201,12 +275,15 @@ export function WidgetPreview({
     }, [payload.chart_color_scheme]);
 
     let content;
+    let status: WidgetPreviewStatus;
 
     if (failure !== undefined) {
+        status = 'data-failure';
         content = (
             <WidgetErrorState message={`${failure.key}: ${failure.message}`} />
         );
     } else if (payload.data === null) {
+        status = 'data-too-large';
         content = (
             <p className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
                 This widget reads too much data to preview it here. Open it on
@@ -214,6 +291,7 @@ export function WidgetPreview({
             </p>
         );
     } else if (state.status === 'loading') {
+        status = 'loading';
         content = (
             <div
                 aria-busy="true"
@@ -222,8 +300,10 @@ export function WidgetPreview({
             />
         );
     } else if (state.status === 'failed') {
+        status = 'failed';
         content = <WidgetErrorState message={state.message} />;
     } else {
+        status = crashed ? 'crashed' : 'ready';
         content = (
             <WidgetErrorBoundary
                 resetKey={payload}
@@ -255,49 +335,19 @@ export function WidgetPreview({
         );
     }
 
-    const showsWidget =
-        failure === undefined &&
-        payload.data !== null &&
-        state.status === 'ready' &&
-        !crashed;
-    const carded = isWidgetCarded(payload.frame, showsWidget);
+    const carded = isWidgetCarded(payload.frame, status === 'ready');
 
     return (
-        <figure className="flex flex-col gap-2 p-2">
-            <figcaption className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span className="truncate font-medium text-foreground">
-                    {payload.name}
-                </span>
-                <span className="flex shrink-0 items-center gap-3">
-                    <label className="flex items-center gap-1">
-                        <input
-                            type="checkbox"
-                            checked={privacyMode}
-                            onChange={(event) =>
-                                setPrivacyMode(event.target.checked)
-                            }
-                        />
-                        Hide amounts
-                    </label>
-                    <span>
-                        {payload.size.width} · {payload.size.height} · rev{' '}
-                        {payload.revision}
-                    </span>
-                </span>
-            </figcaption>
-            <div
-                data-frame={carded ? 'card' : 'none'}
-                className={cn(
-                    'wm-widget w-full min-w-0 overflow-hidden',
-                    carded && WIDGET_CARD_CLASS_NAME,
-                )}
-                style={{
-                    height: HEIGHTS[payload.size.height],
-                    maxWidth: MAX_WIDTHS[payload.size.width],
-                }}
-            >
-                {content}
-            </div>
-        </figure>
+        <div
+            data-frame={carded ? 'card' : 'none'}
+            data-render-status={status}
+            className={cn(
+                'wm-widget w-full min-w-0 overflow-hidden',
+                carded && WIDGET_CARD_CLASS_NAME,
+            )}
+            style={style}
+        >
+            {content}
+        </div>
     );
 }

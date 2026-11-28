@@ -41,6 +41,7 @@ use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\PlaceWidget;
 use App\Mcp\Tools\RemoveWidget;
+use App\Mcp\Tools\RenderWidget;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SpendingByCategory;
 use App\Mcp\Tools\SpendingByLabel;
@@ -234,7 +235,13 @@ app is kept in their books.
   that throws on the dashboard keeps that error: `get_widget` returns it as
   `last_error` with its revision, and `update_widget` saves the fix as a new
   revision. Clients that show MCP Apps draw a live preview of the widget under
-  `create_widget`, `update_widget` and `get_widget`.
+  `create_widget`, `update_widget` and `get_widget`. Whatever the client,
+  `render_widget` lets you see it yourself: it draws the widget with the user's
+  data at its dashboard cell's size (or another `width`/`height`, in `light`
+  or `dark`) and answers with its `html`, compacted, and `diagnostics` measured
+  in the browser: text cut off, content the cell clips, charts with no size or
+  no series, a cell left mostly empty. Call it after every save, fix what it
+  finds with `update_widget`, and render again.
 
 Write tools (create_account, update_account, create_transaction,
 update_transaction, delete_transaction, split_transaction,
@@ -329,6 +336,7 @@ class WhisperMoneyServer extends Server
         ListDashboards::class,
         GetWidgetSdk::class,
         GetWidget::class,
+        RenderWidget::class,
 
         // Write
         CreateAccount::class,
