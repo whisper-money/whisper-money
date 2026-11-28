@@ -3540,11 +3540,10 @@ export default function Welcome({
                                         // what free leaves out reads against
                                         // it. The latam tier has no bank
                                         // connections, so it lists none.
-                                        features={[
-                                            ...(Object.values(
-                                                tierChoice.plans,
-                                            )[0]?.features ?? []),
-                                        ]}
+                                        features={
+                                            Object.values(tierChoice.plans)[0]
+                                                ?.features ?? []
+                                        }
                                         canRegister={canRegister}
                                         isLatam={tierChoice.tier === 'latam'}
                                     />

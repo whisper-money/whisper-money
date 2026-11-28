@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { type PriceTierChoice } from '@/hooks/use-price-tier';
 import { type Plan } from '@/types/pricing';
@@ -42,24 +42,31 @@ vi.mock('@/hooks/use-price-tier', () => ({
     usePriceTierChoice: () => tierChoice.current,
 }));
 
-// jsdom ships no `matchMedia`, which the page's PWA and media checks read.
-window.matchMedia ??= (query: string) =>
-    ({
+// jsdom ships neither `matchMedia` nor `IntersectionObserver`, which the
+// page's PWA checks, hero video and scroll reveals read.
+beforeAll(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
         matches: false,
         media: query,
         addEventListener: () => {},
         removeEventListener: () => {},
-    }) as unknown as MediaQueryList;
+    }));
+    vi.stubGlobal(
+        'IntersectionObserver',
+        class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+            takeRecords() {
+                return [];
+            }
+        },
+    );
+});
 
-// Nor `IntersectionObserver`, which the hero video and scroll reveals use.
-globalThis.IntersectionObserver ??= class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-    takeRecords() {
-        return [];
-    }
-} as unknown as typeof IntersectionObserver;
+afterAll(() => {
+    vi.unstubAllGlobals();
+});
 
 // jsdom cannot play media; the hero is not what these tests look at.
 vi.mock('@/components/landing/hero-video', () => ({ HeroVideo: () => null }));
