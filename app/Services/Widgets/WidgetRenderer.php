@@ -71,8 +71,8 @@ class WidgetRenderer
     {
         $payload = $this->payloads->for($user, $widget);
         $size = [
-            'width' => $width?->value ?? $payload['size']['width'],
-            'height' => $height?->value ?? $payload['size']['height'],
+            'width' => $width->value ?? $payload['size']['width'],
+            'height' => $height->value ?? $payload['size']['height'],
         ];
         $payload['size'] = $size;
         $cell = $this->cellSize(WidgetWidth::from($size['width']), WidgetHeight::from($size['height']));
