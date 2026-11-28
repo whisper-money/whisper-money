@@ -238,9 +238,9 @@ app is kept in their books.
   `create_widget`, `update_widget` and `get_widget`. Whatever the client,
   `render_widget` lets you see it yourself: it draws the widget with the user's
   data at its desktop dashboard cell's size (or another `width`/`height`, in
-  `light` or `dark`; phones are not drawn) and answers with its `html`, compacted, and `diagnostics` measured
-  in the browser: text cut off, content the cell clips, charts with no size or
-  no series, a cell left mostly empty. Call it after every save, fix what it
+  `light` or `dark`; phones are not drawn) and answers with its `html`,
+  compacted, and `diagnostics` measured in the browser: text cut off, content
+  the cell clips, charts with no size or no series, a cell left mostly empty. Call it after every save, fix what it
   finds with `update_widget`, and render again.
 
 Write tools (create_account, update_account, create_transaction,
