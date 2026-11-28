@@ -10,8 +10,8 @@
 // Nothing leaves the machine: the payload carries the user's data. The browser
 // resolves no host name, opens no WebSocket and no non-proxied WebRTC socket,
 // runs no service worker, and every request that is not for the page's own
-// file is refused, other files on this disk included. (The widget validator already refuses network code; this
-// holds even if something slipped past it.)
+// file is refused, other files on this disk included. (The widget validator
+// already refuses network code; this holds even if something slipped past it.)
 //
 // Usage:
 //   node scripts/render-widget.mjs <job.json>
