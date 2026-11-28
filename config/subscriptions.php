@@ -204,6 +204,7 @@ return [
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',
+                'Custom dashboards with AI-built widgets',
                 'Unlimited accounts',
                 'Unlimited transactions',
                 'Your data stays yours',
@@ -223,6 +224,7 @@ return [
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',
+                'Custom dashboards with AI-built widgets',
                 'Unlimited accounts',
                 'Unlimited transactions',
                 'Your data stays yours',
